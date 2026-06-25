@@ -535,7 +535,7 @@ async function generatePdf() {
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(120, 53, 4);
-    const wTexts = warnings.slice(0, 2).map((w: any) => `* [${w.type.toUpperCase()}] ${w.text}`).join('   ');
+    const wTexts = warnings.slice(0, 2).map((w: any) => `* [${(w.type || 'ALERTA').toUpperCase()}] ${w.text || ''}`).join('   ');
     doc.text(doc.splitTextToSize(wTexts, W - 8), M + 4, boxY + 10);
     state.y += 22;
   }
@@ -566,7 +566,10 @@ function buttonBusy(button: HTMLButtonElement, busy: boolean) {
 function isPdfButton(target: EventTarget | null) {
   const element = target instanceof Element ? target : null;
   const button = element?.closest('button') as HTMLButtonElement | null;
-  return button && /descargar.*pdf/i.test(button.innerText || '') ? button : null;
+  if (!button) return null;
+  const text = button.innerText || button.textContent || '';
+  const id = button.id || '';
+  return (/descargar.*pdf/i.test(text) || id === 'download-professional-pdf') ? button : null;
 }
 
 function install() {
