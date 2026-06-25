@@ -1,15 +1,7 @@
 const STYLE_ID = "v2-header-footer-style";
 const PATCH_FLAG = "data-v2-header-footer";
 
-const logoMarkup = `
-  <svg class="v2-brand-logo" viewBox="0 0 120 140" fill="none" aria-hidden="true">
-    <rect x="7" y="8" width="18" height="124" fill="#fff"></rect>
-    <rect x="95" y="8" width="18" height="124" fill="#fff"></rect>
-    <rect x="52" y="8" width="16" height="48" fill="#fff"></rect>
-    <rect x="52" y="86" width="16" height="46" fill="#fff"></rect>
-    <circle cx="60" cy="70" r="27" fill="#C5A566"></circle>
-  </svg>
-`;
+const logoMarkup = ``;
 
 function ensureStyle() {
   if (typeof document === "undefined" || document.getElementById(STYLE_ID)) return;
@@ -136,9 +128,8 @@ function applyHeader() {
   header.innerHTML = `
     <div class="v2-shell">
       <div class="v2-brand">
-        ${logoMarkup}
         <div>
-          <p class="v2-eyebrow">Auditoría patrimonial premium</p>
+          <p class="v2-eyebrow">Auditoría patrimonial y de previsión familiar</p>
           <h1 class="v2-name">JOSÉ CARLOS HIDALGO</h1>
         </div>
       </div>
@@ -157,7 +148,6 @@ function applyFooter() {
   footer.innerHTML = `
     <div class="v2-shell">
       <div class="v2-brand">
-        ${logoMarkup}
         <div>
           <p class="v2-name">JOSÉ CARLOS HIDALGO</p>
           <p class="v2-role">Consultor financiero, hipotecario y patrimonial</p>

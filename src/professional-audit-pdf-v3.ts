@@ -30,26 +30,17 @@ function percent(val: number) { return `${Number(val || 0).toLocaleString('es-ES
 function pageHeader(doc: jsPDF, subtitle: string) {
   doc.setFillColor(...BLACK);
   doc.rect(0, 0, 210, 30, 'F');
-  
-  // Custom logo mark drawing
-  doc.setFillColor(255, 255, 255);
-  doc.rect(14, 6, 2, 18, 'F');
-  doc.rect(30, 6, 2, 18, 'F');
-  doc.rect(21, 6, 2, 7, 'F');
-  doc.rect(21, 17, 2, 7, 'F');
-  doc.setFillColor(...GOLD);
-  doc.circle(22, 15, 3.5, 'F');
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(255, 255, 255);
-  doc.text('JOSÉ CARLOS HIDALGO', 38, 11);
+  doc.text('JOSÉ CARLOS HIDALGO', 14, 11);
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...GOLD);
-  doc.text(subtitle.toUpperCase(), 38, 18);
+  doc.text(subtitle.toUpperCase(), 14, 18);
   doc.setTextColor(220, 220, 220);
-  doc.text('josecarlos@hilolegal.es | 647 50 60 40', 38, 25);
+  doc.text('josecarlos@hilolegal.es | 647 50 60 40', 14, 25);
 }
 
 function footer(doc: jsPDF, page: number) {
@@ -391,9 +382,9 @@ async function generatePdf() {
   const state: PageState = { page: 1, y: 42, title: '' };
 
   // ==========================================
-  // PAGE 1: PORTADA PREMIUM
+  // PAGE 1: PORTADA PROFESIONAL (FONDO CLARO)
   // ==========================================
-  doc.setFillColor(...BLACK);
+  doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, 210, 297, 'F');
 
   // Gold side margin accents
@@ -402,85 +393,68 @@ async function generatePdf() {
   doc.rect(204, 0, 6, 297, 'F');
 
   // Central decorative grid
-  doc.setDrawColor(255, 255, 255);
+  doc.setDrawColor(...BORDER);
   doc.setLineWidth(0.2);
   doc.line(20, 110, 190, 110);
   doc.line(20, 220, 190, 220);
 
-  // Big geometric shield
-  doc.setFillColor(35, 35, 35);
-  doc.roundedRect(60, 40, 90, 45, 4, 4, 'F');
-  doc.setDrawColor(...GOLD);
-  doc.setLineWidth(1.2);
-  doc.roundedRect(60, 40, 90, 45, 4, 4, 'D');
-
-  // Custom visual brand inside shield
-  doc.setFillColor(255, 255, 255);
-  doc.rect(82, 50, 4, 25, 'F');
-  doc.rect(124, 50, 4, 25, 'F');
-  doc.rect(98, 50, 4, 10, 'F');
-  doc.rect(98, 65, 4, 10, 'F');
-  doc.circle(105, 62.5, 9, 'F');
-  doc.setFillColor(...GOLD);
-  doc.circle(105, 62.5, 6, 'F');
-
-  // Titles
+  // Titles (Shifted for premium light balance without logo)
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(21);
-  doc.setTextColor(255, 255, 255);
-  doc.text('AUDITORÍA PATRIMONIAL', 105, 135, { align: 'center' });
-  doc.setFontSize(14);
+  doc.setFontSize(23);
+  doc.setTextColor(...BLACK);
+  doc.text('AUDITORÍA PATRIMONIAL', 105, 115, { align: 'center' });
+  doc.setFontSize(13.5);
   doc.setTextColor(...GOLD);
-  doc.text('INFORME ESTRATÉGICO PROFESIONAL', 105, 146, { align: 'center' });
+  doc.text('INFORME ESTRATÉGICO PROFESIONAL', 105, 126, { align: 'center' });
 
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8.5);
-  doc.setTextColor(180, 180, 180);
-  doc.text('PREVISIÓN SOCIAL • BLINDAJE FAMILIAR • JUBILACIÓN • ORDEN SUCESORIO', 105, 155, { align: 'center' });
+  doc.setTextColor(...MUTED);
+  doc.text('PREVISIÓN SOCIAL • BLINDAJE FAMILIAR • JUBILACIÓN • ORDEN SUCESORIO', 105, 135, { align: 'center' });
 
-  // Client Details Card
-  doc.setFillColor(28, 28, 28);
-  doc.roundedRect(25, 175, 160, 36, 3, 3, 'F');
-  doc.setDrawColor(50, 50, 50);
+  // Client Details Card (Off-white / Slate 50 background)
+  doc.setFillColor(...LIGHT);
+  doc.roundedRect(25, 160, 160, 36, 3, 3, 'F');
+  doc.setDrawColor(...BORDER);
   doc.setLineWidth(0.4);
-  doc.roundedRect(25, 175, 160, 36, 3, 3, 'D');
+  doc.roundedRect(25, 160, 160, 36, 3, 3, 'D');
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(9);
   doc.setTextColor(...GOLD);
-  doc.text('DATOS DE LA CONSULTORÍA', 32, 183);
+  doc.text('DATOS DE LA CONSULTORÍA', 32, 168);
 
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8.3);
-  doc.setTextColor(220, 220, 220);
-  doc.text(`CLIENTE: ${clientName.toUpperCase()}`, 32, 191);
-  doc.text(`FECHA DE EMISIÓN: ${new Date().toLocaleDateString('es-ES')}`, 32, 197);
-  doc.text(`TIPO DE INFORME: Auditoría de Seguridad Financiera de Alto Impacto`, 32, 203);
+  doc.setTextColor(...BLACK);
+  doc.text(`CLIENTE: ${clientName.toUpperCase()}`, 32, 176);
+  doc.text(`FECHA DE EMISIÓN: ${new Date().toLocaleDateString('es-ES')}`, 32, 182);
+  doc.text(`TIPO DE INFORME: Auditoría de Seguridad Financiera de Alto Impacto`, 32, 188);
 
   // Adviser stamp
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(10.5);
-  doc.setTextColor(255, 255, 255);
-  doc.text('JOSÉ CARLOS HIDALGO', 105, 238, { align: 'center' });
+  doc.setTextColor(...BLACK);
+  doc.text('JOSÉ CARLOS HIDALGO', 105, 230, { align: 'center' });
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...GOLD);
-  doc.text('Consultor de Previsión Social e Intermediario Hipotecario Certificado', 105, 244, { align: 'center' });
-  doc.setTextColor(150, 150, 150);
-  doc.text('Email: josecarlos@hilolegal.es   |   Teléfono: 647 50 60 40', 105, 250, { align: 'center' });
+  doc.text('Consultor de Previsión Social e Intermediario Hipotecario Certificado', 105, 236, { align: 'center' });
+  doc.setTextColor(...MUTED);
+  doc.text('Email: josecarlos@hilolegal.es   |   Teléfono: 647 50 60 40', 105, 242, { align: 'center' });
 
   // Seal of Quality
-  doc.setFillColor(28, 28, 28);
+  doc.setFillColor(...LIGHT);
   doc.setDrawColor(...GOLD);
   doc.setLineWidth(0.8);
-  doc.circle(105, 269, 10, 'FD');
+  doc.circle(105, 264, 10, 'FD');
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(5);
-  doc.setTextColor(255, 255, 255);
-  doc.text('CERTIFICADA', 105, 268.5, { align: 'center' });
+  doc.setTextColor(...BLACK);
+  doc.text('CERTIFICADA', 105, 263.5, { align: 'center' });
   doc.setFontSize(4.5);
   doc.setTextColor(...GOLD);
-  doc.text('PREMIUM', 105, 271.5, { align: 'center' });
+  doc.text('OFICIAL', 105, 266.5, { align: 'center' });
 
   // ==========================================
   // PAGE 2: ÍNDICE DE CONTENIDOS Y PRESENTACIÓN
@@ -500,10 +474,11 @@ async function generatePdf() {
     { num: '7', name: 'Planificación de Jubilación en Tres Escenarios', page: '6' },
     { num: '8', name: 'Proyección del Patrimonio Integral a los 67 años', page: '7' },
     { num: '9', name: 'Niveles de Seguridad y Vulnerabilidad por Áreas', page: '7' },
-    { num: '10', name: 'Plan de Acción Priorizado y Medidas de Blindaje', page: '8' }
+    { num: '10', name: 'Plan de Acción Priorizado y Medidas de Blindaje', page: '8' },
+    { num: '11', name: 'Análisis Cualitativo y Conclusión Estratégica', page: '9' }
   ];
 
-  ensureSpace(doc, state, 85);
+  ensureSpace(doc, state, 90);
   let indexY = state.y + 4;
   indexItems.forEach((item) => {
     doc.setFont('Helvetica', 'bold');
@@ -532,9 +507,12 @@ async function generatePdf() {
     indexY += 6.5;
   });
 
+  // Explicitly update state.y so that the following box renders after the index items
+  state.y = indexY;
+
   // Brief Presentation Box at bottom of page 2
   ensureSpace(doc, state, 30);
-  const presY = state.y + 24;
+  const presY = state.y + 6;
   doc.setFillColor(...LIGHT);
   doc.setDrawColor(...BORDER);
   doc.roundedRect(M, presY, W, 22, 2, 2, 'FD');
@@ -548,6 +526,9 @@ async function generatePdf() {
   doc.setTextColor(...MUTED);
   const presTxt = `Garantizar el blindaje financiero integral del patrimonio familiar y de la capacidad de ingresos ordinarios de ${clientName} mediante el análisis de brechas de cobertura pública y la estructuración coordinada de mecanismos de previsión privados de ahorro sistemático indexado.`;
   doc.text(doc.splitTextToSize(presTxt, W - 8), M + 4, presY + 9);
+
+  // Update state.y to finish page 2
+  state.y = presY + 24;
 
   // ==========================================
   // PAGE 3: RESUMEN EJECUTIVO (Fase 13.2)
@@ -852,7 +833,84 @@ async function generatePdf() {
     state.y += 22;
   }
 
-  // Closing
+  // ==========================================
+  // PAGE 9: RESUMEN GENERAL DEL DIAGNÓSTICO ESTRATÉGICO
+  // ==========================================
+  newPage(doc, state, 'Resumen General y Conclusión');
+  heading(doc, state, '11. RESUMEN GENERAL DEL DIAGNÓSTICO ESTRATÉGICO');
+  paragraph(doc, state, 'Análisis global personalizado de los diferentes pilares de la auditoría patrimonial con recomendaciones finales.');
+  sectionDivider(doc, state);
+
+  ensureSpace(doc, state, 180);
+
+  // Section 1: Previsión Social e Ingresos
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(...SLATE);
+  doc.text('I. PROTECCIÓN DE INGRESOS (BAJA LABORAL E INCAPACIDAD)', M, state.y);
+  state.y += 4;
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(...BLACK);
+  const p1 = `El pilar de protección de ingresos revela que, ante una situación de baja por incapacidad temporal por contingencia común, existe una desprotección considerable en el tramo inicial de la Seguridad Social. Durante los primeros 20 días de convalecencia, el subsidio público es de tan solo el 60% de la base reguladora, lo que genera un déficit inicial estimado de ${money(metrics.temporaryDisability.tramo60Brecha)}/mes frente a tus gastos mensuales fijos de ${money(metrics.expenses.total)}/mes. Recomendamos encarecidamente contratar un subsidio privado de baja laboral para complementar este tramo crítico. Asimismo, en supuestos graves de incapacidad permanente total (IPT) o absoluta (IPA), el desfase de ingresos respecto a tus compromisos presupuestarios podría cronificarse, por lo que sugerimos revisar o ampliar tus capitales asegurados por invalidez.`;
+  doc.text(doc.splitTextToSize(p1, W), M, state.y);
+  state.y += 28;
+
+  // Section 2: Protección Familiar y Sucesos
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(...SLATE);
+  doc.text('II. BLINDAJE Y PROTECCIÓN FAMILIAR (SUCESOS)', M, state.y);
+  state.y += 4;
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(...BLACK);
+  const p2 = `El blindaje familiar frente a fallecimiento o invalidez requiere garantizar la estabilidad financiera de tus dependientes. El capital objetivo idóneo estimado asciende a ${money(metrics.familyNeed.capitalFamiliarObjetivo)}, desglosado en: amortización de tus deudas (${money(metrics.familyNeed.detalles.deuda)}), gastos de transición y sepelio (${money(metrics.familyNeed.detalles.transicion)}), fondos previstos para estudios de tus hijos (${money(metrics.familyNeed.detalles.educacion)}), y una renta familiar de transición de ${money(metrics.familyNeed.detalles.rentaNecesaria)} (equivalente a 10 años de brecha de vida). Tras restar el capital de vida que tienes contratado actualmente (${money(formData.capitalSeguroVidaExistente)}), resulta un déficit neto de protección familiar de ${money(metrics.familyNeed.deficitDeProteccion)}. Es prioritario incrementar tus seguros de vida vigentes para neutralizar este riesgo estructural.`;
+  doc.text(doc.splitTextToSize(p2, W), M, state.y);
+  state.y += 28;
+
+  // Section 3: Liquidez y Apalancamiento de Deuda
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(...SLATE);
+  doc.text('III. LIQUIDEZ DE EMERGENCIA Y APALANCAMIENTO DE DEUDA', M, state.y);
+  state.y += 4;
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(...BLACK);
+  const p3 = `Dispones de una reserva de liquidez bancaria de ${money(formData.dineroBanco)}, equivalente a ${metrics.liquidity.mesesCubiertos.toFixed(1)} meses de gastos recurrentes fijos. Aunque te permite resolver incidencias cotidianas menores, aconsejamos consolidar de forma prioritaria un fondo equivalente a entre 6 y 9 meses de gastos fijos para blindar plenamente tu liquidez operativa. Por otro lado, tu servicio de deuda mensual de ${money(metrics.debt.deudaMensualTotal)} supone un ratio sobre tu salario neto ordinario del ${percent(metrics.debt.ratioSobreSalario * 100)}, situándose en una posición muy saludable y controlada, holgadamente por debajo del límite prudencial máximo aconsejado por las autoridades del 35%.`;
+  doc.text(doc.splitTextToSize(p3, W), M, state.y);
+  state.y += 24;
+
+  // Section 4: Jubilación y Patrimonio
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(...SLATE);
+  doc.text('IV. PLANIFICACIÓN DE JUBILACIÓN, PATRIMONIO E INFLACIÓN', M, state.y);
+  state.y += 4;
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(...BLACK);
+  const p4 = `En el escenario central, tu jubilación pública previsible será de ${money(metrics.retirementGap.pensionEstimada)}/mes, lo que creará una brecha fáctica de retiro de ${money(metrics.retirementGap.brechaMensual)}/mes frente a tu presupuesto. Para mantener tu nivel de vida sin descapitalizarte durante 23 años de jubilación, debes acumular a los 67 años un capital de retiro objetivo de ${money(metrics.retirementGap.capitalObjetivo)}. Puedes lograrlo de forma progresiva ahorrando ${money(metrics.retirementGap.recommendedSaving)}/mes en una solución indexada eficiente que aproveche el interés compuesto. Tus rentas inmobiliarias netas (${money(formData.rentasInmobiliariasMensualesNetas)}/mes) representan un motor formidable; si las reinviertes sistemáticamente, impulsarán tu patrimonio total neto proyectado de jubilación hasta un estimado de ${money(metrics.estate.projectedTotal)}.`;
+  doc.text(doc.splitTextToSize(p4, W), M, state.y);
+  state.y += 28;
+
+  // Section 5: Orden Legal y Sucesorio
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(...SLATE);
+  doc.text('V. BLINDAJE SUCESORIO Y ORDEN LEGAL', M, state.y);
+  state.y += 4;
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(...BLACK);
+  const p5 = `El análisis del orden legal revela áreas de vulnerabilidad importantes. La falta de testamento formal o poder preventivo notarial expone a tu familia a costes imprevistos de declaración de herederos judiciales, bloqueos provisionales de cuentas bancarias y potenciales disputas sucesorias. Se recomienda acudir al notario para protocolizar estas actas básicas, cuyo coste es insignificante y proporcionan un blindaje operativo y sucesorio inmediato.`;
+  doc.text(doc.splitTextToSize(p5, W), M, state.y);
+  state.y += 22;
+
+  // Closing Note block
+  ensureSpace(doc, state, 30);
+  state.y += 4;
   heading(doc, state, 'CIERRE PROFESIONAL Y NOTA METODOLÓGICA', 8.5);
   paragraph(doc, state, 'Este diagnóstico representa una foto matemática rigurosa basada en el modelo legal y de previsión de la Seguridad Social de España. Para corregir las brechas identificadas, ordenar su patrimonio o formalizar los complementos de ahorro de jubilación, puede ponerse en contacto con José Carlos Hidalgo en josecarlos@hilolegal.es o en el teléfono 647 50 60 40.');
 

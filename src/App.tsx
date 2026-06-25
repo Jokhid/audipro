@@ -221,6 +221,29 @@ export default function App() {
   const warnings = useMemo(() => validateReportConsistency(formData), [formData]);
   const actionPlan = useMemo(() => generateActionPlan(formData, metrics), [formData, metrics]);
 
+  const renderThermometer = (score: number) => {
+    const percentage = Math.min(100, Math.max(0, score * 10));
+    return (
+      <div className="space-y-1 py-1">
+        <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold tracking-tight uppercase">
+          <span className="text-red-500 font-black">Vulnerable</span>
+          <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+            Nivel: <strong className={score >= 8 ? "text-emerald-600" : score >= 5 ? "text-amber-500" : "text-red-500"}>{score}/10</strong>
+          </span>
+          <span className="text-emerald-500 font-black">Protegido</span>
+        </div>
+        <div className="relative h-2 w-full bg-gradient-to-r from-red-500 via-amber-400 to-emerald-500 rounded-full overflow-visible">
+          <div 
+            className="absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-white border-2 border-slate-900 rounded-full shadow-sm transition-all duration-300 flex items-center justify-center"
+            style={{ left: `calc(${percentage}% - 7px)` }}
+          >
+            <div className="w-1.5 h-1.5 bg-slate-900 rounded-full" />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Exposing to global scope for professional-audit-pdf-v3 integration
   useEffect(() => {
     (window as any).currentAuditData = {
@@ -370,9 +393,8 @@ export default function App() {
       <header className="sticky top-0 z-50 bg-[#1A1A1A] text-white border-b border-white/10 shadow-md">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <img src={brandLogo} alt="Logo" className="h-14 w-12 object-contain" />
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#C5A566]">Auditoría Patrimonial Premium</p>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#C5A566]">Auditoría Patrimonial y de Previsión Familiar</p>
               <h1 className="text-xl font-black text-white sm:text-2xl">JOSÉ CARLOS HIDALGO</h1>
               <p className="text-xs text-white/70">Consultoría Estratégica, Previsión Social e Hipotecaria</p>
             </div>
@@ -469,6 +491,7 @@ export default function App() {
                     scores.baja >= 8 ? "bg-emerald-50 text-emerald-700" : scores.baja >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.baja}/10</span>
                 </div>
+                {renderThermometer(scores.baja)}
                 <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
                   <div>
                     <span className="text-slate-400 block font-medium">Prestación 60% / 75%</span>
@@ -482,6 +505,9 @@ export default function App() {
                 <p className="text-xs text-slate-700 leading-relaxed font-medium">
                   <strong>Recomendación:</strong> Cobertura suficiente solo en el tramo del 75%. Se recomienda subsidio privado de baja laboral para complementar los primeros 20 días.
                 </p>
+                <div className="mt-1.5 text-[11px] text-slate-600 bg-amber-50/50 p-2.5 border-l-2 border-amber-500 rounded-r leading-relaxed">
+                  <strong>¿Por qué se sugiere esto?</strong> Durante los primeros 3 días de baja por enfermedad común, el trabajador no percibe subsidio público. Del día 4 al 20, la Seguridad Social solo cubre el 60% de la base reguladora (un déficit de <strong>{formatCurrency(temporaryDisability.tramo60Brecha)}/mes</strong> frente a tus gastos fijos de <strong>{formatCurrency(expenses.total)}/mes</strong>). El seguro de subsidio privado cubre esta brecha crítica inicial para evitar tener que recurrir a tus ahorros de emergencia durante convalecencias.
+                </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
                   <span>Prioridad: <strong className="text-red-500 font-bold uppercase">Alta</strong></span>
                   <span>Origen: SS España</span>
@@ -499,6 +525,7 @@ export default function App() {
                     scores.familia >= 8 ? "bg-emerald-50 text-emerald-700" : scores.familia >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.familia}/10</span>
                 </div>
+                {renderThermometer(scores.familia)}
                 <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
                   <div>
                     <span className="text-slate-400 block font-medium">Pensión Familiar Conjunta</span>
@@ -516,6 +543,16 @@ export default function App() {
                     ? "Subsidio mensual cubierto por escenario familiar conjunto. Ajustar seguros para cubrir deudas." 
                     : `Existe un déficit familiar. Se recomienda capital de vida de ${formatCurrency(familyNeed.deficitDeProteccion)}.`}
                 </p>
+                <div className="mt-1.5 text-[11px] text-slate-600 bg-amber-50/50 p-2.5 border-l-2 border-[#C5A566] rounded-r leading-relaxed">
+                  <strong>¿Cómo se calcula y por qué se sugiere?</strong> El capital objetivo recomendado de <strong>{formatCurrency(familyNeed.capitalFamiliarObjetivo)}</strong> se calcula sumando:
+                  <span className="block mt-1 pl-2 border-l border-slate-200">
+                    • Amortización de deudas pendientes: <strong>{formatCurrency(familyNeed.detalles.deuda)}</strong> (para que tu familia no herede deudas).<br />
+                    • Gastos de transición inmediata y sepelio: <strong>{formatCurrency(familyNeed.detalles.transicion)}</strong>.<br />
+                    • Educación de tus <strong>{formData.hijosMenores25}</strong> hijos menores: <strong>{formatCurrency(familyNeed.detalles.educacion)}</strong> (estimando {formatCurrency(18000)} por hijo para estudios superiores).<br />
+                    • Protección de rentas familiares: <strong>{formatCurrency(familyNeed.detalles.rentaNecesaria)}</strong> (cubre la brecha mensual de vida multiplicada por 120 meses / 10 años).
+                  </span>
+                  Al restar tu seguro de vida existente de <strong>{formatCurrency(formData.capitalSeguroVidaExistente)}</strong>, resulta un déficit de protección de <strong>{formatCurrency(familyNeed.deficitDeProteccion)}</strong> que sugerimos cubrir.
+                </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
                   <span>Prioridad: <strong className="text-[#F97316] font-bold uppercase">Media-Alta</strong></span>
                   <span>Análisis: Viudedad + Orfandad (Tope 100%)</span>
@@ -533,6 +570,7 @@ export default function App() {
                     scores.fondo >= 8 ? "bg-emerald-50 text-emerald-700" : scores.fondo >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.fondo}/10</span>
                 </div>
+                {renderThermometer(scores.fondo)}
                 <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
                   <div>
                     <span className="text-slate-400 block font-medium">Fondo de Emergencia</span>
@@ -548,6 +586,9 @@ export default function App() {
                     ? "Construir de forma prioritaria una reserva equivalente a 6-9 meses de gasto fijo." 
                     : "Excelente colchón de seguridad. Vigile el exceso de liquidez no invertido."}
                 </p>
+                <div className="mt-1.5 text-[11px] text-slate-600 bg-slate-50 p-2.5 border-l-2 border-blue-400 rounded-r leading-relaxed">
+                  <strong>¿Por qué se sugiere esto?</strong> Un fondo de reserva de entre 6 y 9 meses de gastos fijos (rango sugerido: <strong>{formatCurrency(expenses.total * 6)}</strong> - <strong>{formatCurrency(expenses.total * 9)}</strong>) asegura que puedas afrontar crisis empresariales, desempleo o accidentes sobrevenidos sin endeudarte de forma perjudicial ni tener que liquidar de forma prematura otras inversiones a largo plazo.
+                </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
                   <span>Prioridad: <strong className="text-slate-500 font-bold uppercase">Baja</strong></span>
                   <span>Nivel: {liquidity.nivel.toUpperCase()}</span>
@@ -565,6 +606,7 @@ export default function App() {
                     scores.deuda >= 8 ? "bg-emerald-50 text-emerald-700" : scores.deuda >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.deuda}/10</span>
                 </div>
+                {renderThermometer(scores.deuda)}
                 <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
                   <div>
                     <span className="text-slate-400 block font-medium">Cuota mensual / Deuda pendiente</span>
@@ -580,6 +622,9 @@ export default function App() {
                     ? "Alerta de endeudamiento alto. Considere amortizar cuota antes de contratar nuevos activos." 
                     : "Ratio saludable por debajo del límite prudente del 35%."}
                 </p>
+                <div className="mt-1.5 text-[11px] text-slate-600 bg-slate-50 p-2.5 border-l-2 border-indigo-400 rounded-r leading-relaxed">
+                  <strong>¿Por qué se sugiere esto?</strong> Las recomendaciones financieras y reguladoras aconsejan no comprometer más del 35% de tus ingresos ordinarios netos en el servicio de la deuda mensual (cuota de <strong>{formatCurrency(debt.deudaMensualTotal)}</strong> sobre salario neto de <strong>{formatCurrency(formData.salarioNetoMensual)}</strong>). Mantener este ratio en <strong>{formatPercent(debt.ratioSobreSalario * 100)}</strong> asegura la sostenibilidad financiera global a largo plazo.
+                </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
                   <span>Prioridad: <strong className="text-slate-500 font-bold uppercase">Baja</strong></span>
                   <span>Riesgo: {debt.riesgo.toUpperCase()}</span>
@@ -597,6 +642,7 @@ export default function App() {
                     scores.jubilacion >= 8 ? "bg-emerald-50 text-emerald-700" : scores.jubilacion >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.jubilacion}/10</span>
                 </div>
+                {renderThermometer(scores.jubilacion)}
                 <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
                   <div>
                     <span className="text-slate-400 block font-medium">Pensión Central Estimada</span>
@@ -610,6 +656,9 @@ export default function App() {
                 <p className="text-xs text-slate-700 leading-relaxed font-medium">
                   <strong>Recomendación:</strong> Se requiere un capital previsor de {formatCurrency(retirementGap.capitalObjetivo)} para compensar la brecha mensual estimada.
                 </p>
+                <div className="mt-1.5 text-[11px] text-slate-600 bg-amber-50/50 p-2.5 border-l-2 border-amber-500 rounded-r leading-relaxed">
+                  <strong>¿Por qué se sugiere esto?</strong> La jubilación pública cubrirá <strong>{formatCurrency(retirementGap.pensionEstimada)}/mes</strong>, generando una brecha de <strong>{formatCurrency(retirementGap.brechaMensual)}/mes</strong> frente a tus necesidades fácticas. Para cubrir este desfase durante más de 20 años de retiro, es vital acumular <strong>{formatCurrency(retirementGap.capitalObjetivo)}</strong> a los 67 años, lo cual se logra de forma cómoda y sistemática ahorrando <strong>{formatCurrency(retirementGap.recommendedSaving)}/mes</strong> en planes eficientes con interés compuesto.
+                </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
                   <span>Prioridad: <strong className="text-[#F97316] font-bold uppercase">Media</strong></span>
                   <span>Tasa reguladora: {formatPercent(centralScenario.porcentajeEstimado)}</span>
@@ -627,6 +676,7 @@ export default function App() {
                     scores.inflacion >= 8 ? "bg-emerald-50 text-emerald-700" : scores.inflacion >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.inflacion}/10</span>
                 </div>
+                {renderThermometer(scores.inflacion)}
                 <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
                   <div>
                     <span className="text-slate-400 block font-medium">Patrimonio Proyectado 67 años</span>
@@ -642,6 +692,9 @@ export default function App() {
                     ? "Alerta: Destino de rentas inmobiliarias sin verificar. No se consideran rentas en proyección por prudencia."
                     : "Patrimonio bien encaminado gracias al flujo inmobiliario e interés compuesto de planes de ahorro."}
                 </p>
+                <div className="mt-1.5 text-[11px] text-slate-600 bg-slate-50 p-2.5 border-l-2 border-emerald-500 rounded-r leading-relaxed">
+                  <strong>¿Por qué se sugiere esto?</strong> Las rentas inmobiliarias de <strong>{formatCurrency(formData.rentasInmobiliariasMensualesNetas)}/mes</strong> son un activo pasivo extraordinario. Si se reinvierten de manera sistemática, potencian drásticamente el crecimiento de tu patrimonio neto proyectado (estimado en <strong>{formatCurrency(metrics.estate.projectedTotal)}</strong>). Tener patrimonio diversificado es la mejor defensa frente a la inflación económica.
+                </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
                   <span>Prioridad: <strong className="text-slate-500 font-bold uppercase">Baja</strong></span>
                   <span>Destino de Rentas: {formData.destinoRentasInmobiliarias.toUpperCase()}</span>
@@ -659,9 +712,13 @@ export default function App() {
                     scores.legal >= 8 ? "bg-emerald-50 text-emerald-700" : scores.legal >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.legal}/10</span>
                 </div>
+                {renderThermometer(scores.legal)}
                 <p className="text-xs text-slate-700 leading-relaxed font-medium">
                   <strong>Recomendación:</strong> Falta testamento, inventario patrimonial, poder preventivo y protocolo familiar de contingencia. Se recomienda ordenar notarialmente estas actas urgentemente.
                 </p>
+                <div className="mt-1.5 text-[11px] text-slate-600 bg-amber-50/50 p-2.5 border-l-2 border-red-500 rounded-r leading-relaxed">
+                  <strong>¿Por qué se sugiere esto?</strong> La ausencia de testamento o poder preventivo expone a la familia a un proceso costoso y lento de declaración de herederos judiciales, bloqueo de cuentas corrientes y posibles sobrecostes impositivos. Formalizar estas actas notariales cuesta menos de 150 € y otorga blindaje sucesorio y de representación legal inmediato.
+                </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
                   <span>Prioridad: <strong className="text-[#F97316] font-bold uppercase">Media</strong></span>
                   <span>Sucesorio: Insuficiente</span>
@@ -986,7 +1043,7 @@ export default function App() {
               <div>
                 <span className="text-[#C5A566] text-[10px] font-black uppercase tracking-widest block">Informe de Auditoría Completa</span>
                 <h3 className="text-md font-black text-white mt-1">Descarga del Documento Certificado</h3>
-                <p className="text-xs text-slate-400 mt-2">PDF de diseño premium con escenarios macroeconómicos, orden sucesorio y diagnóstico formal del asesor.</p>
+                <p className="text-xs text-slate-400 mt-2">PDF de diseño profesional con escenarios macroeconómicos, orden sucesorio y diagnóstico formal del asesor.</p>
               </div>
 
               {/* Keep existing button exact text for backward compatible handlers if any */}

@@ -331,6 +331,18 @@ export function calculateRetirementGap(
   const brechaMensual = Math.max(0, gastoJubilacionReferencia - ingresosJubilacion);
   const targetCapital = brechaMensual * 12 * 23; // esperanza de vida 90 años fijos
 
+  const age = Number(data.edad || 38);
+  const targetAge = 67;
+  const yearsToRetirement = Math.max(1, targetAge - age);
+  const rentabilidadAnual = Number(data.rentabilidadAhorroSistematico || 6);
+  const n = Math.max(1, yearsToRetirement * 12);
+  const r = (rentabilidadAnual / 100) / 12;
+
+  let recommendedSaving = targetCapital / n;
+  if (r > 0) {
+    recommendedSaving = (targetCapital * r) / (Math.pow(1 + r, n) - 1);
+  }
+
   return {
     gastoReferencia: gastoJubilacionReferencia,
     pensionEstimada,
@@ -338,7 +350,8 @@ export function calculateRetirementGap(
     otrosIngresos: Number(data.otrosIngresosNetos || 0),
     brechaMensual,
     añosRetiro: 23,
-    capitalObjetivo: targetCapital
+    capitalObjetivo: targetCapital,
+    recommendedSaving
   };
 }
 
