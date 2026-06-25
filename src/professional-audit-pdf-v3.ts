@@ -63,9 +63,9 @@ function footer(doc: jsPDF, page: number) {
 function newPage(doc: jsPDF, state: PageState, title: string) {
   if (state.page > 1) {
     footer(doc, state.page);
-    doc.addPage();
-    state.page++;
   }
+  doc.addPage();
+  state.page++;
   state.title = title;
   state.y = 42;
   pageHeader(doc, title);
@@ -102,6 +102,215 @@ function sectionDivider(doc: jsPDF, state: PageState) {
   state.y += 6;
 }
 
+// Native Vector Chart for benefits
+function drawVectorChart(
+  doc: jsPDF,
+  state: PageState,
+  title: string,
+  categories: string[],
+  values: number[],
+  referenceValue: number,
+  referenceLabel: string
+) {
+  ensureSpace(doc, state, 70);
+  const chartY = state.y;
+  const chartH = 38;
+  const chartW = 150;
+  const chartX = M + 15;
+
+  // Title
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...SLATE);
+  doc.text(title.toUpperCase(), M, chartY);
+
+  // Background box
+  doc.setFillColor(...LIGHT);
+  doc.setDrawColor(...BORDER);
+  doc.roundedRect(M, chartY + 2, W, chartH + 11, 1.5, 1.5, 'FD');
+
+  // Axes and Grid
+  doc.setDrawColor(220, 225, 230);
+  doc.setLineWidth(0.2);
+  
+  const maxValue = Math.max(...values, referenceValue, 1000);
+  const scale = (val: number) => (val / maxValue) * (chartH - 8);
+
+  // Reference lines
+  for (let i = 0; i <= 4; i++) {
+    const gridY = chartY + 2 + chartH - (i * (chartH - 8)) / 4;
+    doc.line(chartX, gridY, chartX + chartW, gridY);
+    
+    // Y-axis label
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(5.5);
+    doc.setTextColor(...MUTED);
+    doc.text(money((maxValue * i) / 4), chartX - 2, gridY + 1.5, { align: 'right' });
+  }
+
+  // Draw bars
+  const numBars = categories.length;
+  const barSpacing = chartW / numBars;
+  const barWidth = barSpacing * 0.45;
+
+  categories.forEach((cat, index) => {
+    const val = values[index];
+    const h = scale(val);
+    const bx = chartX + index * barSpacing + (barSpacing - barWidth) / 2;
+    const by = chartY + 2 + chartH - h;
+
+    // Fill bar based on reference comparison
+    if (val < referenceValue) {
+      doc.setFillColor(...RED);
+    } else {
+      doc.setFillColor(...GREEN);
+    }
+    doc.rect(bx, by, barWidth, h, 'F');
+
+    // Label on top of bar
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(5.5);
+    doc.setTextColor(...SLATE);
+    doc.text(money(val), bx + barWidth / 2, by - 1, { align: 'center' });
+
+    // X-axis label
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(5.8);
+    doc.setTextColor(...BLACK);
+    const textLines = doc.splitTextToSize(cat, barSpacing - 2) as string[];
+    textLines.forEach((line, lineIdx) => {
+      doc.text(line, bx + barWidth / 2, chartY + 2 + chartH + 3.2 + (lineIdx * 2.8), { align: 'center' });
+    });
+  });
+
+  // Reference line (expenses)
+  const refY = chartY + 2 + chartH - scale(referenceValue);
+  doc.setDrawColor(...ORANGE);
+  doc.setLineWidth(0.6);
+  doc.line(chartX, refY, chartX + chartW, refY);
+
+  // Label for reference line
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(5.5);
+  doc.setTextColor(...ORANGE);
+  doc.text(`${referenceLabel}: ${money(referenceValue)}`, chartX + chartW - 2, refY - 1, { align: 'right' });
+
+  state.y += chartH + 16;
+}
+
+// Stacked Bar Chart for scenarios
+function drawRetirementChart(
+  doc: jsPDF,
+  state: PageState,
+  title: string,
+  scenarios: { name: string; pension: number; rents: number }[],
+  referenceValue: number
+) {
+  ensureSpace(doc, state, 72);
+  const chartY = state.y;
+  const chartH = 38;
+  const chartW = 150;
+  const chartX = M + 15;
+
+  // Title
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...SLATE);
+  doc.text(title.toUpperCase(), M, chartY);
+
+  // Background box
+  doc.setFillColor(...LIGHT);
+  doc.setDrawColor(...BORDER);
+  doc.roundedRect(M, chartY + 2, W, chartH + 15, 1.5, 1.5, 'FD');
+
+  // Axes and Grid
+  doc.setDrawColor(220, 225, 230);
+  doc.setLineWidth(0.2);
+
+  const maxValue = Math.max(...scenarios.map(s => s.pension + s.rents), referenceValue, 1000);
+  const scale = (val: number) => (val / maxValue) * (chartH - 8);
+
+  // Reference lines
+  for (let i = 0; i <= 4; i++) {
+    const gridY = chartY + 2 + chartH - (i * (chartH - 8)) / 4;
+    doc.line(chartX, gridY, chartX + chartW, gridY);
+
+    // Y-axis label
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(5.5);
+    doc.setTextColor(...MUTED);
+    doc.text(money((maxValue * i) / 4), chartX - 2, gridY + 1.5, { align: 'right' });
+  }
+
+  // Draw stacked bars
+  const numBars = scenarios.length;
+  const barSpacing = chartW / numBars;
+  const barWidth = barSpacing * 0.45;
+
+  scenarios.forEach((scen, index) => {
+    const pHeight = scale(scen.pension);
+    const rHeight = scale(scen.rents);
+    const bx = chartX + index * barSpacing + (barSpacing - barWidth) / 2;
+
+    // Stacked bars: bottom is pension, top is rents
+    const py = chartY + 2 + chartH - pHeight;
+    doc.setFillColor(...GOLD);
+    doc.rect(bx, py, barWidth, pHeight, 'F');
+
+    let ry = py;
+    if (scen.rents > 0) {
+      ry = py - rHeight;
+      doc.setFillColor(71, 85, 105);
+      doc.rect(bx, ry, barWidth, rHeight, 'F');
+    }
+
+    // Total value label
+    const totalVal = scen.pension + scen.rents;
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(5.5);
+    doc.setTextColor(...SLATE);
+    doc.text(money(totalVal), bx + barWidth / 2, ry - 1, { align: 'center' });
+
+    // X-axis label
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...BLACK);
+    doc.text(scen.name.toUpperCase(), bx + barWidth / 2, chartY + 2 + chartH + 3.5, { align: 'center' });
+  });
+
+  // Reference line (expenses)
+  const refY = chartY + 2 + chartH - scale(referenceValue);
+  doc.setDrawColor(...RED);
+  doc.setLineWidth(0.6);
+  doc.line(chartX, refY, chartX + chartW, refY);
+
+  // Label for reference line
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(5.5);
+  doc.setTextColor(...RED);
+  doc.text(`Gastos Ref: ${money(referenceValue)}`, chartX + chartW - 2, refY - 1, { align: 'right' });
+
+  // Legend at bottom
+  const legendY = chartY + 2 + chartH + 8;
+  doc.setFillColor(...GOLD);
+  doc.rect(M + 25, legendY, 3, 3, 'F');
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(5.5);
+  doc.setTextColor(...MUTED);
+  doc.text('Pensión Previsible S.S.', M + 30, legendY + 2.4);
+
+  doc.setFillColor(71, 85, 105);
+  doc.rect(M + 75, legendY, 3, 3, 'F');
+  doc.text('Rentas Inmobiliarias Netas', M + 80, legendY + 2.4);
+
+  doc.setDrawColor(...RED);
+  doc.setLineWidth(0.5);
+  doc.line(M + 125, legendY + 1.5, M + 130, legendY + 1.5);
+  doc.text('Gasto Mensual de Referencia', M + 132, legendY + 2.4);
+
+  state.y += chartH + 20;
+}
+
 // Table cell drawers
 function drawTable(
   doc: jsPDF,
@@ -117,54 +326,53 @@ function drawTable(
 
   // Header
   doc.setFillColor(...BLACK);
-  doc.roundedRect(M, startY, W, 8, 1.5, 1.5, 'F');
+  doc.roundedRect(M, startY, W, 7.5, 1.2, 1.2, 'F');
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(6.8);
+  doc.setFontSize(6.5);
   doc.setTextColor(255, 255, 255);
   
   headers.forEach((h, i) => {
     const align = alignments[i] || 'left';
     const tx = align === 'right' ? x + widths[i] - 3 : align === 'center' ? x + widths[i]/2 : x + 3;
-    doc.text(h, tx, startY + 5.5, { align });
+    doc.text(h, tx, startY + 5.0, { align });
     x += widths[i];
   });
-  state.y += 8.5;
+  state.y += 8.0;
 
   // Rows
   rowsData.forEach((row, rowIndex) => {
-    ensureSpace(doc, state, 9);
+    ensureSpace(doc, state, 8.5);
     x = M;
     doc.setFillColor(rowIndex % 2 ? 255 : 248, rowIndex % 2 ? 255 : 250, rowIndex % 2 ? 255 : 252);
     doc.setDrawColor(...BORDER);
-    doc.rect(M, state.y, W, 8, 'FD');
+    doc.rect(M, state.y, W, 7.5, 'FD');
 
     row.forEach((val, i) => {
       const align = alignments[i] || 'left';
       const tx = align === 'right' ? x + widths[i] - 3 : align === 'center' ? x + widths[i]/2 : x + 3;
       doc.setFont('Helvetica', i === 0 ? 'bold' : 'normal');
-      doc.setFontSize(6.5);
+      doc.setFontSize(6.2);
       doc.setTextColor(...SLATE);
 
-      // Status styling logic for viabilidad, prioridad, etc.
-      if (val === 'Viable' || val === 'Cubierto' || val === 'Alta' || val === 'Bajo' || val === 'Leve') {
+      if (val === 'Viable' || val === 'Cubierto' || val === 'Alta' || val === 'Bajo' || val === 'Leve' || val === 'PROTEGIDO') {
         doc.setFont('Helvetica', 'bold');
-        if (val === 'Viable' || val === 'Cubierto' || val === 'Bajo' || val === 'Leve') doc.setTextColor(...GREEN);
+        if (val === 'Viable' || val === 'Cubierto' || val === 'Bajo' || val === 'Leve' || val === 'PROTEGIDO') doc.setTextColor(...GREEN);
         if (val === 'Alta') doc.setTextColor(...RED);
-      } else if (val === 'Ajustado' || val === 'Media' || val === 'Moderada' || val === 'Pendiente') {
+      } else if (val === 'Ajustado' || val === 'Media' || val === 'Moderada' || val === 'Pendiente' || val === 'ALERTA') {
         doc.setFont('Helvetica', 'bold');
         doc.setTextColor(...ORANGE);
-      } else if (val === 'No viable' || val === 'Alto' || val === 'Grave' || val === 'Baja') {
+      } else if (val === 'No viable' || val === 'Alto' || val === 'Grave' || val === 'Baja' || val === 'VULNERABLE') {
         doc.setFont('Helvetica', 'bold');
         doc.setTextColor(...RED);
       }
 
-      const txtLine = doc.splitTextToSize(val, widths[i] - 5).slice(0, 1);
-      doc.text(txtLine, tx, state.y + 5.5, { align });
+      const txtLine = doc.splitTextToSize(val, widths[i] - 4).slice(0, 1);
+      doc.text(txtLine, tx, state.y + 5.0, { align });
       x += widths[i];
     });
-    state.y += 8;
+    state.y += 7.5;
   });
-  state.y += 4;
+  state.y += 3.5;
 }
 
 // -------------------------------------------------------------
@@ -183,7 +391,7 @@ async function generatePdf() {
   const state: PageState = { page: 1, y: 42, title: '' };
 
   // ==========================================
-  // PAGE 1: PORTADA PREMIUM (Fase 13.1)
+  // PAGE 1: PORTADA PREMIUM
   // ==========================================
   doc.setFillColor(...BLACK);
   doc.rect(0, 0, 210, 297, 'F');
@@ -275,7 +483,74 @@ async function generatePdf() {
   doc.text('PREMIUM', 105, 271.5, { align: 'center' });
 
   // ==========================================
-  // PAGE 2: RESUMEN EJECUTIVO (Fase 13.2)
+  // PAGE 2: ÍNDICE DE CONTENIDOS Y PRESENTACIÓN
+  // ==========================================
+  newPage(doc, state, 'Índice de Contenidos');
+  heading(doc, state, 'ÍNDICE DE CONTENIDOS DEL INFORME');
+  paragraph(doc, state, 'Este informe estratégico de auditoría patrimonial detalla las coberturas previsionales públicas vigentes de la Seguridad Social española y su brecha frente a las necesidades fácticas familiares. Los apartados que componen este documento son:');
+  sectionDivider(doc, state);
+
+  const indexItems = [
+    { num: '1', name: 'Resumen Ejecutivo y Calificación Global', page: '3' },
+    { num: '2', name: 'Fotografía Financiera Actual y Presupuesto', page: '4' },
+    { num: '3', name: 'Objetivos y Proyectos de Capitalización', page: '4' },
+    { num: '4', name: 'Auditoría de Previsión Social (Seguridad Social)', page: '5' },
+    { num: '5', name: 'Comparativa Gráfica de Prestaciones vs Gastos', page: '5' },
+    { num: '6', name: 'Fallecimiento y Protección Familiar Sucesoria', page: '6' },
+    { num: '7', name: 'Planificación de Jubilación en Tres Escenarios', page: '6' },
+    { num: '8', name: 'Proyección del Patrimonio Integral a los 67 años', page: '7' },
+    { num: '9', name: 'Niveles de Seguridad y Vulnerabilidad por Áreas', page: '7' },
+    { num: '10', name: 'Plan de Acción Priorizado y Medidas de Blindaje', page: '8' }
+  ];
+
+  ensureSpace(doc, state, 85);
+  let indexY = state.y + 4;
+  indexItems.forEach((item) => {
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8.2);
+    doc.setTextColor(...SLATE);
+    doc.text(`${item.num}. ${item.name.toUpperCase()}`, M, indexY);
+
+    // Dots between name and page
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(215, 220, 225);
+    const nameWidth = doc.getTextWidth(`${item.num}. ${item.name.toUpperCase()}`);
+    const dotsX = M + nameWidth + 2;
+    const dotsW = W - nameWidth - 12;
+    let dotsStr = '';
+    for (let j = 0; j < Math.floor(dotsW / 1.5); j++) {
+      dotsStr += '.';
+    }
+    doc.text(dotsStr, dotsX, indexY);
+
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8.2);
+    doc.setTextColor(...GOLD);
+    doc.text(item.page, M + W, indexY, { align: 'right' });
+
+    indexY += 6.5;
+  });
+
+  // Brief Presentation Box at bottom of page 2
+  ensureSpace(doc, state, 30);
+  const presY = state.y + 24;
+  doc.setFillColor(...LIGHT);
+  doc.setDrawColor(...BORDER);
+  doc.roundedRect(M, presY, W, 22, 2, 2, 'FD');
+  
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...GOLD);
+  doc.text('PROPÓSITO DE LA AUDITORÍA:', M + 4, presY + 5);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(...MUTED);
+  const presTxt = `Garantizar el blindaje financiero integral del patrimonio familiar y de la capacidad de ingresos ordinarios de ${clientName} mediante el análisis de brechas de cobertura pública y la estructuración coordinada de mecanismos de previsión privados de ahorro sistemático indexado.`;
+  doc.text(doc.splitTextToSize(presTxt, W - 8), M + 4, presY + 9);
+
+  // ==========================================
+  // PAGE 3: RESUMEN EJECUTIVO (Fase 13.2)
   // ==========================================
   newPage(doc, state, 'Resumen Ejecutivo y Fotografía Inicial');
   heading(doc, state, '1. RESUMEN EJECUTIVO Y CALIFICACIÓN GLOBAL');
@@ -359,7 +634,7 @@ async function generatePdf() {
   drawTable(doc, state, ['DATO DE LA AUDITORÍA', 'VALOR REGISTRADO', 'ESTADO', 'OBSERVACIÓN DEL ASESOR'], [50, 42, 25, 65], clientRows);
 
   // ==========================================
-  // PAGE 3: FOTOGRAFÍA FINANCIERA & OBJETIVOS (Fase 13.5 & 13.6)
+  // PAGE 4: FOTOGRAFÍA FINANCIERA & OBJETIVOS
   // ==========================================
   newPage(doc, state, 'Fotografía Financiera y Objetivos');
   heading(doc, state, '2. FOTOGRAFÍA FINANCIERA ACTUAL');
@@ -407,7 +682,7 @@ async function generatePdf() {
   );
 
   // ==========================================
-  // PAGE 4: AUDITORÍA PREVISIÓN SOCIAL (Fase 13.7 & 13.8)
+  // PAGE 5: AUDITORÍA DE PREVISIÓN SOCIAL (Fase 13.7 & 13.8)
   // ==========================================
   newPage(doc, state, 'Auditoría de Previsión Social');
   heading(doc, state, '4. AUDITORÍA DE PREVISIÓN SOCIAL (SEGURIDAD SOCIAL)');
@@ -432,9 +707,33 @@ async function generatePdf() {
     ['left', 'right', 'right', 'right', 'center', 'left']
   );
 
-  // Fallecimiento y protección familiar
-  heading(doc, state, 'PROTECCIÓN FAMILIAR Y SEGUROS DE VIDA', 9.5);
+  // Add the native vector chart
+  const categories = ['Baja (60%)', 'Baja (75%)', 'Invalidez IPT', 'Invalidez IPA', 'Viudedad', 'Jubilación'];
+  const values = [
+    metrics.temporaryDisability.tramo60Monto,
+    metrics.temporaryDisability.tramo75Monto,
+    metrics.disability.iptMonto,
+    metrics.disability.ipaMonto,
+    metrics.survivorBenefits.viudedadMonto,
+    metrics.retirementGap.pensionEstimada
+  ];
+  drawVectorChart(
+    doc,
+    state,
+    '5. COMPARATIVA DE PRESTACIONES PÚBLICAS FRENTE A GASTOS',
+    categories,
+    values,
+    metrics.expenses.total,
+    'Gastos fijos'
+  );
+
+  // ==========================================
+  // PAGE 6: PROTECCIÓN FAMILIAR Y RETIRO
+  // ==========================================
+  newPage(doc, state, 'Protección Familiar y Retiro');
+  heading(doc, state, '6. PROTECCIÓN FAMILIAR SUCESORIA Y DE VIDA');
   paragraph(doc, state, 'Análisis de liquidez sucesoria en caso de fallecimiento para asegurar la cancelación de deudas, gastos de transición obligatorios y educación superior para herederos dependientes.');
+  sectionDivider(doc, state);
 
   const famRows = [
     ['Deuda pendiente acumulada (amortización)', money(formData.deudaPendienteTotal), 'Impuestos y transición sucesoria', money(6000)],
@@ -444,13 +743,8 @@ async function generatePdf() {
   ];
   drawTable(doc, state, ['CONCEPTO DE LIQUIDEZ', 'VALOR', 'AJUSTE SUCESORIO', 'IMPORTE'], [50, 32, 60, 40], famRows);
 
-  // ==========================================
-  // PAGE 5: PLANIFICACIÓN DE JUBILACIÓN (Fase 13.9 & 13.10)
-  // ==========================================
-  newPage(doc, state, 'Estudio Jubilación y Patrimonio Proyectado');
-  heading(doc, state, '5. PLANIFICACIÓN DE JUBILACIÓN (TRES ESCENARIOS)');
-  paragraph(doc, state, 'Tres proyecciones matemáticas considerando estabilidad de bases de cotización, lagunas normativas y continuidad del flujo inmobiliario pasivo.');
-  sectionDivider(doc, state);
+  heading(doc, state, '7. PLANIFICACIÓN DE JUBILACIÓN (TRES ESCENARIOS)');
+  paragraph(doc, state, 'Tres proyecciones matemáticas considerando la pensión de jubilación ordinaria estimada junto con el flujo pasivo de rentas inmobiliarias netas declaradas.');
 
   const scenRows = (retirementScenarios || []).map((s: any) => [
     s.name,
@@ -470,9 +764,27 @@ async function generatePdf() {
     ['left', 'right', 'right', 'right', 'right', 'right', 'right']
   );
 
-  // Proyección a los 67 años
-  heading(doc, state, 'PROYECCIÓN DEL PATRIMONIO INTEGRAL A LOS 67 AÑOS', 9.5);
+  // AddStacked chart for retirement scenarios
+  const scens = [
+    { name: 'Conservador', pension: retirementScenarios?.[0]?.pensionEstimada || 0, rents: Number(formData.rentasInmobiliariasMensualesNetas || 0) },
+    { name: 'Central', pension: retirementScenarios?.[1]?.pensionEstimada || 0, rents: Number(formData.rentasInmobiliariasMensualesNetas || 0) },
+    { name: 'Optimista', pension: retirementScenarios?.[2]?.pensionEstimada || 0, rents: Number(formData.rentasInmobiliariasMensualesNetas || 0) }
+  ];
+  drawRetirementChart(
+    doc,
+    state,
+    'ESTUDIO COMPARATIVO DE INGRESOS MENSUALES JUBILADOS VS GASTO REF.',
+    scens,
+    metrics.expenses.total
+  );
+
+  // ==========================================
+  // PAGE 7: PATRIMONIO Y NIVELES DE SEGURIDAD
+  // ==========================================
+  newPage(doc, state, 'Patrimonio y Niveles de Seguridad');
+  heading(doc, state, '8. PROYECCIÓN DEL PATRIMONIO INTEGRAL A LOS 67 AÑOS');
   paragraph(doc, state, 'Proyección a largo plazo sumando liquidez bancaria, crecimiento de capitales invertidos y capitalizaciones periódicas mediante ahorro sistemático indexado.');
+  sectionDivider(doc, state);
 
   const projRows = [
     ['Dinero en banco (mantenimiento líquido)', money(formData.dineroBanco), 'Colchón fáctico inmune al interés compuesto'],
@@ -484,13 +796,8 @@ async function generatePdf() {
   ];
   drawTable(doc, state, ['COMPONENTE PATRIMONIAL', 'VALOR PROYECTADO', 'HIPÓTESIS Y COMENTARIOS'], [60, 42, 80], projRows);
 
-  // ==========================================
-  // PAGE 6: NIVELES DE SEGURIDAD & PLAN DE ACCIÓN (Fase 13.11 & 13.12)
-  // ==========================================
-  newPage(doc, state, 'Plan de Acción y Cierre Profesional');
-  heading(doc, state, '6. NIVELES DE SEGURIDAD POR ÁREAS DE AUDITORÍA');
-  paragraph(doc, state, 'Sintetiza la puntuación asignada a cada área clave y la recomendación o medida de blindaje fáctico requerida.');
-  sectionDivider(doc, state);
+  heading(doc, state, '9. NIVELES DE SEGURIDAD POR ÁREAS DE AUDITORÍA');
+  paragraph(doc, state, 'Resumen del estado de cobertura fáctica asignada a cada pilar patrimonial básico de la consultoría.');
 
   const areaRows = [
     ['Fondo de Emergencia / Liquidez', `${scores.fondo}/10`, 'Colchón de seguridad líquido adecuado para transiciones.', 'Mantener liquidez controlada'],
@@ -504,9 +811,14 @@ async function generatePdf() {
   ];
   drawTable(doc, state, ['ÁREA DE AUDITORÍA', 'PUNTOS', 'DIAGNÓSTICO ESTRATÉGICO', 'ACCIÓN RECOMENDADA'], [50, 18, 74, 40], areaRows);
 
-  // Action plan (Urgentes, Importantes, Optimización)
-  heading(doc, state, '7. PLAN DE ACCIÓN PRIORIZADO DEL CLIENTE', 9.5);
-  
+  // ==========================================
+  // PAGE 8: PLAN DE ACCIÓN Y CIERRE
+  // ==========================================
+  newPage(doc, state, 'Plan de Acción y Cierre Profesional');
+  heading(doc, state, '10. PLAN DE ACCIÓN PRIORIZADO DEL CLIENTE');
+  paragraph(doc, state, 'Listado de acciones concretas ordenadas por prioridad estratégica para la consecución del blindaje patrimonial absoluto.');
+  sectionDivider(doc, state);
+
   const actRows = (actionPlan || []).map((step: any) => [
     step.step,
     step.priority,
