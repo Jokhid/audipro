@@ -1,0 +1,130 @@
+html body main > section:first-of-type,
+html body #root main > section:first-of-type {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #0f172a !important;
+}
+
+html body main > section:first-of-type input,
+html body main > section:first-of-type select,
+html body #root main > section:first-of-type input,
+html body #root main > section:first-of-type select {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html body .audit-chart-heading,
+html body #root .audit-chart-heading {
+  display: none !important;
+}
+
+html body [data-chart-axis="niveles de seguridad y vulnerabilidad"],
+html body #root [data-chart-axis="niveles de seguridad y vulnerabilidad"] {
+  display: none !important;
+}
+
+html body .audit-previsor-box,
+html body #root .audit-previsor-box {
+  border: 0 !important;
+  background: transparent !important;
+  color: #0f172a !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+html body .audit-previsor-box h3,
+html body .audit-previsor-box h4,
+html body .audit-previsor-box h5,
+html body #root .audit-previsor-box h3,
+html body #root .audit-previsor-box h4,
+html body #root .audit-previsor-box h5 {
+  color: #C5A566 !important;
+}
+
+html body .audit-previsor-box p,
+html body .audit-previsor-box span,
+html body .audit-previsor-box strong,
+html body #root .audit-previsor-box p,
+html body #root .audit-previsor-box span,
+html body #root .audit-previsor-box strong {
+  color: #0f172a !important;
+}
+
+html body footer,
+html body #root footer,
+html body .print-report-root footer {
+  background: #1A1A1A !important;
+  background-image: none !important;
+  color: #ffffff !important;
+}
+
+html body footer p,
+html body footer li,
+html body footer span,
+html body footer strong,
+html body footer h1,
+html body footer h2,
+html body footer h3,
+html body footer h4,
+html body footer h5,
+html body footer h6 {
+  color: rgb(255 255 255 / 0.72) !important;
+}
+
+html body footer a {
+  color: #C5A566 !important;
+}
+
+html body footer a:hover {
+  color: #ffffff !important;
+}
+
+@media print {
+  html body .audit-chart-heading,
+  html body #root .audit-chart-heading {
+    display: block !important;
+  }
+
+  html body [data-chart-axis="niveles de seguridad y vulnerabilidad"],
+  html body #root [data-chart-axis="niveles de seguridad y vulnerabilidad"] {
+    display: none !important;
+  }
+
+  html body .audit-previsor-box,
+  html body #root .audit-previsor-box {
+    border: 0 !important;
+    background: transparent !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+  }
+
+  html body .audit-previsor-box h3,
+  html body .audit-previsor-box h4,
+  html body .audit-previsor-box h5,
+  html body #root .audit-previsor-box h3,
+  html body #root .audit-previsor-box h4,
+  html body #root .audit-previsor-box h5 {
+    color: #C5A566 !important;
+  }
+
+  html body .audit-previsor-box p,
+  html body .audit-previsor-box span,
+  html body .audit-previsor-box strong,
+  html body #root .audit-previsor-box p,
+  html body #root .audit-previsor-box span,
+  html body #root .audit-previsor-box strong {
+    color: #0f172a !important;
+  }
+
+  html body header.sticky,
+  html body #root header.sticky,
+  html body .print-report-root header.sticky {
+    display: none !important;
+  }
+
+  html body footer,
+  html body #root footer,
+  html body .print-report-root footer {
+    display: none !important;
+  }
+}

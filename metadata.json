@@ -1,0 +1,6 @@
+{
+  "name": "Auditoría Patrimonial",
+  "description": "Herramienta profesional de auditoría de previsión social, riesgos familiares y planificación de jubilación con informes PDF premium.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
