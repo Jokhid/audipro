@@ -10,6 +10,7 @@ export interface AuditQuestions {
 }
 
 export interface ClientData {
+  // Datos personales y de contacto básicos
   nombre: string;
   telefono: string;
   email: string;
@@ -29,6 +30,67 @@ export interface ClientData {
   preguntas: AuditQuestions;
   proyectosMedioPlazo: string;
   objetivosLargoPlazo: string;
+
+  // --- Fase 2: Modelo de datos profesional ampliado ---
+  // Datos personales y familiares adicionales
+  hijosMenores25: number;
+  hijosDependientes: number;
+  edadHijos: string; // ej. "8, 12"
+  conyugeConIngresos: "Si" | "No" | "Pendiente";
+  ingresosConyuge: number;
+  dependenciaEconomicaDelCliente: "Alta" | "Media" | "Baja" | "Ninguna";
+
+  // Datos económicos adicionales
+  otrosIngresosNetos: number;
+  gastoMensualPersonal: number;
+  viviendaPrestamosMensual: number;
+  gastoMensualTotal?: number; // Calculado
+  capacidadAhorroDeclarada: number;
+  capacidadAhorroCalculada?: number; // Calculado
+  ahorroSistematicoMensual: number;
+  rentabilidadAhorroSistematico: number;
+
+  // Datos inmobiliarios
+  valorInmuebles: number;
+  rentasInmobiliariasMensualesBrutas: number;
+  rentasInmobiliariasMensualesNetas: number;
+  gastosInmobiliariosMensuales: number;
+  impuestosInmobiliariosEstimados: number;
+  deudaInmobiliariaPendiente: number;
+  rentasInmobiliariasDisponibles: number;
+  destinoRentasInmobiliarias: "consumo" | "reinversion" | "mixto" | "desconocido";
+
+  // Datos de deuda
+  cuotaHipoteca: number;
+  cuotaPrestamos: number;
+  cuotaTarjetas: number;
+  deudaMensualTotal?: number; // Calculado
+  deudaPendienteTotal: number;
+  seguroVidaVinculado: "Si" | "No" | "Pendiente";
+  capitalSeguroVidaExistente: number;
+  capitalSeguroIncapacidadExistente: number;
+
+  // Datos laborales y Seguridad Social
+  regimenSeguridadSocial: "General" | "RETA (Autónomos)" | "Otros";
+  anosCotizadosActuales: number;
+  baseCotizacionActual: number;
+  basesCotizacionHistoricasDisponibles: "Si" | "No" | "Pendiente";
+  edadJubilacionEstimada: number;
+  convenioComplementaBaja: "Si" | "No" | "Pendiente";
+  empresaComplementaBaja: "Si" | "No" | "Pendiente";
+  seguroPrivadoBaja: "Si" | "No" | "Pendiente";
+  subsidioPrivadoDiario: number;
+  profesion: string;
+  autonomo: boolean;
+  contingenciaPreferente: "comun" | "profesional" | "ambas";
+
+  // Datos de orden legal
+  tieneTestamento: "Si" | "No" | "Pendiente";
+  tienePoderPreventivo: "Si" | "No" | "Pendiente";
+  tieneInventarioPatrimonial: "Si" | "No" | "Pendiente";
+  familiaConoceDocumentacion: "Si" | "No" | "Pendiente";
+  beneficiariosRevisados: "Si" | "No" | "Pendiente";
+  protocoloEmergenciaFamiliar: "Si" | "No" | "Pendiente";
 }
 
 export interface PrestacionesCalculadas {
@@ -61,3 +123,4 @@ export interface AIAnalysisResult {
     whyNecessary: string;
   }>;
 }
+

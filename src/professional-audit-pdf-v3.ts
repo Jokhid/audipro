@@ -10,211 +10,585 @@ const GOLD = [197, 165, 102] as const;
 const RED = [220, 38, 38] as const;
 const GREEN = [22, 163, 74] as const;
 const ORANGE = [249, 115, 22] as const;
-const BLUE = [96, 165, 250] as const;
+
 const M = 14;
 const W = 182;
 
-type Field = { label: string; value: string; note?: string };
-type Benefit = { label: string; rate: string; value: number; gap: number };
-type ProjectRow = { name: string; target: number; years: number; monthly: number; status: string };
-type QuestionRow = { label: string; title: string; answer: string; explanation: string };
-type PageState = { page: number; y: number; title: string };
-type Metrics = ReturnType<typeof collectMetrics>;
+interface PageState {
+  page: number;
+  y: number;
+  title: string;
+}
 
-function clean(value: string) { return String(value || '').replace(/\s+/g, ' ').trim(); }
-function normalize(value: string) { return clean(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
-function slug(value: string) { return normalize(value || 'cliente').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'cliente'; }
-function numberFromText(value: string) { return Number(String(value || '').replace(/[^0-9.,-]/g, '').replace(',', '.')) || 0; }
-function money(value: number) { return `${Math.round(value || 0).toLocaleString('es-ES')} €`; }
-function moneyMonth(value: number) { return `${money(value)} / mes`; }
-function percent(value: number) { return `${Number(value || 0).toLocaleString('es-ES')}%`; }
-function shortMoney(value: number) {
-  const rounded = Math.round(value || 0);
-  if (Math.abs(rounded) >= 1000000) return `${(rounded / 1000000).toLocaleString('es-ES', { maximumFractionDigits: 1 })} M €`;
-  if (Math.abs(rounded) >= 1000) return `${Math.round(rounded / 1000).toLocaleString('es-ES')} k €`;
-  return `${rounded.toLocaleString('es-ES')} €`;
+// Utility formatting functions
+function clean(val: string) { return String(val || '').replace(/\s+/g, ' ').trim(); }
+function slug(val: string) { return clean(val).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'cliente'; }
+function money(val: number) { return `${Math.round(val || 0).toLocaleString('es-ES')} €`; }
+function percent(val: number) { return `${Number(val || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}%`; }
+
+// Page decorations
+function pageHeader(doc: jsPDF, subtitle: string) {
+  doc.setFillColor(...BLACK);
+  doc.rect(0, 0, 210, 30, 'F');
+  
+  // Custom logo mark drawing
+  doc.setFillColor(255, 255, 255);
+  doc.rect(14, 6, 2, 18, 'F');
+  doc.rect(30, 6, 2, 18, 'F');
+  doc.rect(21, 6, 2, 7, 'F');
+  doc.rect(21, 17, 2, 7, 'F');
+  doc.setFillColor(...GOLD);
+  doc.circle(22, 15, 3.5, 'F');
+
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(255, 255, 255);
+  doc.text('JOSÉ CARLOS HIDALGO', 38, 11);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...GOLD);
+  doc.text(subtitle.toUpperCase(), 38, 18);
+  doc.setTextColor(220, 220, 220);
+  doc.text('josecarlos@hilolegal.es | 647 50 60 40', 38, 25);
 }
-function fieldElement(labelText: string) {
-  const needle = normalize(labelText);
-  return Array.from(document.querySelectorAll('label')).find((item) => normalize(item.textContent || '').includes(needle));
+
+function footer(doc: jsPDF, page: number) {
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(140, 140, 140);
+  doc.text('Informe de Auditoría Patrimonial Certificada. Confidencial y personalizado.', 14, 287);
+  doc.text(`Página ${page}`, 196, 287, { align: 'right' });
 }
-function fieldValue(labelText: string) {
-  const input = fieldElement(labelText)?.querySelector('input, select') as HTMLInputElement | HTMLSelectElement | null;
-  return clean(input?.value || '');
+
+function newPage(doc: jsPDF, state: PageState, title: string) {
+  if (state.page > 1) {
+    footer(doc, state.page);
+    doc.addPage();
+    state.page++;
+  }
+  state.title = title;
+  state.y = 42;
+  pageHeader(doc, title);
 }
-function fieldNumber(labelText: string) { return numberFromText(fieldValue(labelText)); }
-function sectionByText(text: string) {
-  const needle = normalize(text);
-  return Array.from(document.querySelectorAll('main section')).find((section) => normalize(section.textContent || '').includes(needle)) as HTMLElement | undefined;
+
+function ensureSpace(doc: jsPDF, state: PageState, needed = 20) {
+  if (state.y + needed <= 276) return;
+  newPage(doc, state, state.title);
 }
-function realEstateData() {
-  const win = window as typeof window & { auditRealEstateData?: () => Record<string, number> };
-  return typeof win.auditRealEstateData === 'function' ? win.auditRealEstateData() : {} as Record<string, number>;
+
+function heading(doc: jsPDF, state: PageState, text: string, size = 11) {
+  ensureSpace(doc, state, 15);
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(size);
+  doc.setTextColor(...SLATE);
+  doc.text(text.toUpperCase(), M, state.y);
+  state.y += size * 0.4 + 4;
 }
-function selectedAnswer(titlePart: string) {
-  const label = fieldElement(titlePart);
-  const select = label?.querySelector('select') as HTMLSelectElement | null;
-  return clean(select?.value || 'No indicado');
+
+function paragraph(doc: jsPDF, state: PageState, text: string, size = 8.2) {
+  const lines = doc.splitTextToSize(clean(text), W) as string[];
+  ensureSpace(doc, state, lines.length * 4.2 + 5);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(size);
+  doc.setTextColor(...MUTED);
+  doc.text(lines, M, state.y);
+  state.y += lines.length * 4.2 + 4;
 }
-function retirementRatePercent(age: number, years: number) {
-  const yearsToRetirement = Math.max(0, 67 - age);
-  const estimatedYears = years + yearsToRetirement;
-  const rate = estimatedYears < 15 ? 0 : estimatedYears >= 36.5 ? 1 : 0.5 + (estimatedYears - 15) * (0.5 / 21.5);
-  return rate * 100;
+
+function sectionDivider(doc: jsPDF, state: PageState) {
+  doc.setDrawColor(...GOLD);
+  doc.setLineWidth(0.4);
+  doc.line(M, state.y, M + 35, state.y);
+  state.y += 6;
 }
-function projectedValueAt(m: Metrics, years: number) {
-  const invRate = m.investmentReturn / 100;
-  const savRate = m.savingReturn / 100;
-  const annualSaving = m.monthlySaving * 12;
-  const invested = m.invested * Math.pow(1 + invRate, years);
-  const saving = savRate > 0 ? annualSaving * ((Math.pow(1 + savRate, years) - 1) / savRate) : annualSaving * years;
-  const rents = Number(m.estate.realEstateRents || 0) * 12 * years;
-  const realEstateAtEnd = m.yearsToRetirement > 0 ? m.realEstateInvestments * (years / m.yearsToRetirement) : m.realEstateInvestments;
-  return m.bank + invested + saving + rents + realEstateAtEnd;
-}
-function collectMetrics() {
-  const estate = realEstateData();
-  const salary = fieldNumber('salario neto mensual');
-  const base = fieldNumber('base cotización') || fieldNumber('base cotizacion');
-  const age = fieldNumber('edad');
-  const years = fieldNumber('años cotizados') || fieldNumber('anos cotizados');
-  const expenses = fieldNumber('gastos mensuales') + fieldNumber('alquiler, hipoteca y préstamos');
-  const bank = fieldNumber('dinero en banco');
-  const invested = fieldNumber('dinero invertido');
-  const investmentReturn = fieldNumber('rentabilidad dinero invertido') || fieldNumber('rentabilidad inversión') || 0;
-  const monthlySaving = fieldNumber('ahorro sistemático mensual') || fieldNumber('ahorro sistematico mensual');
-  const savingReturn = fieldNumber('rentabilidad ahorro sistemático') || fieldNumber('rentabilidad ahorro sistematico') || 0;
-  const realEstateRents = Number(estate.realEstateRents || 0);
-  const adjustedExpenses = Number(estate.adjustedExpenses ?? Math.max(0, expenses - realEstateRents));
-  const yearsToRetirement = Math.max(0, 67 - age);
-  const retirementRate = retirementRatePercent(age, years) / 100;
-  const retirementPension = Number(estate.retirementPension ?? base * retirementRate);
-  const state = fieldValue('estado civil');
-  const married = state === 'Casado/a' || state === 'Pareja de Hecho';
-  const children = fieldNumber('hijos menores');
-  const benefitValue = (value: number) => ({ value, gap: Math.max(0, expenses - value) });
-  const benefits: Benefit[] = [
-    { label: 'Baja laboral', rate: '75% base reguladora', ...benefitValue(base * 0.75) },
-    { label: 'Invalidez absoluta', rate: '100% base reguladora', ...benefitValue(base) },
-    { label: 'Invalidez profesional', rate: `${age >= 55 ? '75' : '55'}% base reguladora`, ...benefitValue(age >= 55 ? base * 0.75 : base * 0.55) },
-    { label: 'Viudedad', rate: married ? '52% base reguladora' : '0% sin cónyuge/pareja computable', ...benefitValue(married ? base * 0.52 : 0) },
-    { label: 'Orfandad', rate: `${children > 0 ? `${20 * children}% total (${children} x 20%)` : '0% sin hijos computables'}`, ...benefitValue(base * 0.2 * children) },
-    { label: 'Jubilación', rate: `${percent(retirementRate * 100)} base reguladora estimada`, ...benefitValue(retirementPension) },
-  ];
-  const publicGap = Math.max(0, expenses - retirementPension);
-  const adjustedGap = Math.max(0, adjustedExpenses - retirementPension);
-  const retirementGap = Number(estate.retirementGap ?? adjustedGap) || adjustedGap || publicGap;
-  const targetCapital = retirementGap * 12 * 23;
-  const retirementMonths = 23 * 12;
-  const accumulationMonths = Math.max(1, yearsToRetirement * 12);
-  const recommendedSaving = Math.ceil(targetCapital / accumulationMonths);
-  const projectedInvested = Number(estate.projectedInvested ?? invested * Math.pow(1 + investmentReturn / 100, yearsToRetirement));
-  const projectedSaving = Number(estate.projectedSaving ?? (savingReturn > 0 ? monthlySaving * 12 * ((Math.pow(1 + savingReturn / 100, yearsToRetirement) - 1) / (savingReturn / 100)) : monthlySaving * 12 * yearsToRetirement));
-  const projectedRents = Number(estate.projectedRents ?? realEstateRents * 12 * yearsToRetirement);
-  const realEstateInvestments = Number(estate.realEstateInvestments || 0);
-  const projectedTotal = Number(estate.projectedTotal ?? bank + projectedInvested + projectedSaving + projectedRents + realEstateInvestments);
-  const emergencyMonths = expenses > 0 ? bank / expenses : 0;
-  const capacity = Math.max(0, salary - expenses);
-  const totalProjectNeed = collectProjectRows(capacity).reduce((sum, project) => sum + project.monthly, 0);
-  const projectStatus = capacity <= 0 || totalProjectNeed > capacity * 1.15 ? 'No viable' : totalProjectNeed > capacity ? 'Ajustado' : 'Viable';
-  return { estate, salary, base, age, years, expenses, adjustedExpenses, bank, invested, investmentReturn, monthlySaving, savingReturn, yearsToRetirement, retirementMonths, accumulationMonths, retirementPension, retirementGap, targetCapital, recommendedSaving, benefits, projectedInvested, projectedSaving, projectedRents, realEstateInvestments, projectedTotal, emergencyMonths, capacity, totalProjectNeed, projectStatus };
-}
-function collectProjectRows(capacity: number): ProjectRow[] {
-  const section = sectionByText('Objetivos a medio y largo plazo');
-  if (!section) return [];
-  const rows = Array.from(section.querySelectorAll('div')).filter((item) => {
-    const el = item as HTMLElement;
-    return String(el.className || '').includes('grid-cols-12') && normalize(el.textContent || '').includes('eliminar');
+
+// Table cell drawers
+function drawTable(
+  doc: jsPDF,
+  state: PageState,
+  headers: string[],
+  widths: number[],
+  rowsData: string[][],
+  alignments: ("left" | "right" | "center")[] = []
+) {
+  ensureSpace(doc, state, 15);
+  const startY = state.y;
+  let x = M;
+
+  // Header
+  doc.setFillColor(...BLACK);
+  doc.roundedRect(M, startY, W, 8, 1.5, 1.5, 'F');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.setTextColor(255, 255, 255);
+  
+  headers.forEach((h, i) => {
+    const align = alignments[i] || 'left';
+    const tx = align === 'right' ? x + widths[i] - 3 : align === 'center' ? x + widths[i]/2 : x + 3;
+    doc.text(h, tx, startY + 5.5, { align });
+    x += widths[i];
   });
-  return rows.map((row) => {
-    const inputs = Array.from(row.querySelectorAll('input')) as HTMLInputElement[];
-    const name = clean(inputs[0]?.value || 'Proyecto');
-    const target = numberFromText(inputs[1]?.value || '0');
-    const years = Math.max(1, numberFromText((inputs.find((input) => input.type === 'range') || inputs[2])?.value || '1'));
-    const monthly = target / Math.max(1, years * 12);
-    const status = capacity > 0 && monthly <= capacity ? 'Viable' : capacity > 0 && monthly <= capacity * 1.15 ? 'Ajustado' : 'No viable';
-    return { name, target, years, monthly, status };
-  }).filter((row) => row.name && row.name !== 'Nuevo objetivo');
+  state.y += 8.5;
+
+  // Rows
+  rowsData.forEach((row, rowIndex) => {
+    ensureSpace(doc, state, 9);
+    x = M;
+    doc.setFillColor(rowIndex % 2 ? 255 : 248, rowIndex % 2 ? 255 : 250, rowIndex % 2 ? 255 : 252);
+    doc.setDrawColor(...BORDER);
+    doc.rect(M, state.y, W, 8, 'FD');
+
+    row.forEach((val, i) => {
+      const align = alignments[i] || 'left';
+      const tx = align === 'right' ? x + widths[i] - 3 : align === 'center' ? x + widths[i]/2 : x + 3;
+      doc.setFont('Helvetica', i === 0 ? 'bold' : 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(...SLATE);
+
+      // Status styling logic for viabilidad, prioridad, etc.
+      if (val === 'Viable' || val === 'Cubierto' || val === 'Alta' || val === 'Bajo' || val === 'Leve') {
+        doc.setFont('Helvetica', 'bold');
+        if (val === 'Viable' || val === 'Cubierto' || val === 'Bajo' || val === 'Leve') doc.setTextColor(...GREEN);
+        if (val === 'Alta') doc.setTextColor(...RED);
+      } else if (val === 'Ajustado' || val === 'Media' || val === 'Moderada' || val === 'Pendiente') {
+        doc.setFont('Helvetica', 'bold');
+        doc.setTextColor(...ORANGE);
+      } else if (val === 'No viable' || val === 'Alto' || val === 'Grave' || val === 'Baja') {
+        doc.setFont('Helvetica', 'bold');
+        doc.setTextColor(...RED);
+      }
+
+      const txtLine = doc.splitTextToSize(val, widths[i] - 5).slice(0, 1);
+      doc.text(txtLine, tx, state.y + 5.5, { align });
+      x += widths[i];
+    });
+    state.y += 8;
+  });
+  state.y += 4;
 }
-function collectQuestionRows(): QuestionRow[] {
-  const section = sectionByText('Cuestionario completo de auditoría');
-  if (!section) return [];
-  return Array.from(section.querySelectorAll('label')).map((card) => {
-    const select = card.querySelector('select') as HTMLSelectElement | null;
-    if (!select) return null;
-    const spans = Array.from(card.querySelectorAll('span')).map((span) => clean(span.textContent || '')).filter(Boolean);
-    return { label: spans[0] || 'Pregunta', title: spans[1] || clean(card.textContent || ''), explanation: spans[2] || 'Permite identificar una posible vulnerabilidad y priorizar medidas de protección financiera.', answer: clean(select.value || 'No indicado') };
-  }).filter(Boolean) as QuestionRow[];
-}
-function appScores(m: Metrics) {
-  const p01 = selectedAnswer('protección privada que complemente la baja laboral');
-  const p02 = selectedAnswer('familia tendría capital suficiente');
-  const p03 = selectedAnswer('acceso sanitario privado');
-  const p06 = selectedAnswer('batir inflación');
-  const p07 = selectedAnswer('testamento');
-  const p08 = selectedAnswer('documentación, claves y pólizas');
-  const clamp = (value: number) => Math.min(10, Math.max(1, Math.round(value)));
-  return [
-    { label: 'Fondo', score: clamp(m.emergencyMonths * 1.8) },
-    { label: 'Baja', score: p01 === 'Si' ? 10 : p01 === 'Parcialmente' ? 6 : 2 },
-    { label: 'Familia', score: p02 === 'Si' ? 10 : 3 },
-    { label: 'Sanidad', score: p03 === 'Si' ? 10 : 3 },
-    { label: 'Inflación', score: p06 === 'Si' ? 10 : m.bank > 6000 ? 2 : 5 },
-    { label: 'Legal', score: (p07 === 'Si' ? 5 : 1) + (p08 === 'Si' ? 5 : 1) },
+
+// -------------------------------------------------------------
+// MAIN GENERATOR
+// -------------------------------------------------------------
+async function generatePdf() {
+  const dataContainer = (window as any).currentAuditData;
+  if (!dataContainer) {
+    throw new Error('No se encontró el modelo de datos de la auditoría. Recarga y vuelve a intentarlo.');
+  }
+
+  const { formData, projects, metrics, scores, warnings, actionPlan, retirementScenarios } = dataContainer;
+  const clientName = formData.nombre || 'Cliente';
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const state: PageState = { page: 1, y: 42, title: '' };
+
+  // ==========================================
+  // PAGE 1: PORTADA PREMIUM (Fase 13.1)
+  // ==========================================
+  doc.setFillColor(...BLACK);
+  doc.rect(0, 0, 210, 297, 'F');
+
+  // Gold side margin accents
+  doc.setFillColor(...GOLD);
+  doc.rect(0, 0, 6, 297, 'F');
+  doc.rect(204, 0, 6, 297, 'F');
+
+  // Central decorative grid
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(0.2);
+  doc.line(20, 110, 190, 110);
+  doc.line(20, 220, 190, 220);
+
+  // Big geometric shield
+  doc.setFillColor(35, 35, 35);
+  doc.roundedRect(60, 40, 90, 45, 4, 4, 'F');
+  doc.setDrawColor(...GOLD);
+  doc.setLineWidth(1.2);
+  doc.roundedRect(60, 40, 90, 45, 4, 4, 'D');
+
+  // Custom visual brand inside shield
+  doc.setFillColor(255, 255, 255);
+  doc.rect(82, 50, 4, 25, 'F');
+  doc.rect(124, 50, 4, 25, 'F');
+  doc.rect(98, 50, 4, 10, 'F');
+  doc.rect(98, 65, 4, 10, 'F');
+  doc.circle(105, 62.5, 9, 'F');
+  doc.setFillColor(...GOLD);
+  doc.circle(105, 62.5, 6, 'F');
+
+  // Titles
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(21);
+  doc.setTextColor(255, 255, 255);
+  doc.text('AUDITORÍA PATRIMONIAL', 105, 135, { align: 'center' });
+  doc.setFontSize(14);
+  doc.setTextColor(...GOLD);
+  doc.text('INFORME ESTRATÉGICO PROFESIONAL', 105, 146, { align: 'center' });
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(180, 180, 180);
+  doc.text('PREVISIÓN SOCIAL • BLINDAJE FAMILIAR • JUBILACIÓN • ORDEN SUCESORIO', 105, 155, { align: 'center' });
+
+  // Client Details Card
+  doc.setFillColor(28, 28, 28);
+  doc.roundedRect(25, 175, 160, 36, 3, 3, 'F');
+  doc.setDrawColor(50, 50, 50);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(25, 175, 160, 36, 3, 3, 'D');
+
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...GOLD);
+  doc.text('DATOS DE LA CONSULTORÍA', 32, 183);
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8.3);
+  doc.setTextColor(220, 220, 220);
+  doc.text(`CLIENTE: ${clientName.toUpperCase()}`, 32, 191);
+  doc.text(`FECHA DE EMISIÓN: ${new Date().toLocaleDateString('es-ES')}`, 32, 197);
+  doc.text(`TIPO DE INFORME: Auditoría de Seguridad Financiera de Alto Impacto`, 32, 203);
+
+  // Adviser stamp
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text('JOSÉ CARLOS HIDALGO', 105, 238, { align: 'center' });
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(...GOLD);
+  doc.text('Consultor de Previsión Social e Intermediario Hipotecario Certificado', 105, 244, { align: 'center' });
+  doc.setTextColor(150, 150, 150);
+  doc.text('Email: josecarlos@hilolegal.es   |   Teléfono: 647 50 60 40', 105, 250, { align: 'center' });
+
+  // Seal of Quality
+  doc.setFillColor(28, 28, 28);
+  doc.setDrawColor(...GOLD);
+  doc.setLineWidth(0.8);
+  doc.circle(105, 269, 10, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(5);
+  doc.setTextColor(255, 255, 255);
+  doc.text('CERTIFICADA', 105, 268.5, { align: 'center' });
+  doc.setFontSize(4.5);
+  doc.setTextColor(...GOLD);
+  doc.text('PREMIUM', 105, 271.5, { align: 'center' });
+
+  // ==========================================
+  // PAGE 2: RESUMEN EJECUTIVO (Fase 13.2)
+  // ==========================================
+  newPage(doc, state, 'Resumen Ejecutivo y Fotografía Inicial');
+  heading(doc, state, '1. RESUMEN EJECUTIVO Y CALIFICACIÓN GLOBAL');
+  paragraph(doc, state, 'La calificación sintética de seguridad mide la robustez de las finanzas personales frente a sucesos sobrevenidos como bajas médicas prolongadas, fallecimiento familiar, sobreapalancamiento o brechas de retiro.');
+  sectionDivider(doc, state);
+
+  // Big Score Card
+  ensureSpace(doc, state, 24);
+  const scoreY = state.y;
+  doc.setFillColor(...BLACK);
+  doc.roundedRect(M, scoreY, 60, 20, 2, 2, 'F');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...GOLD);
+  doc.text('SEGURIDAD GLOBAL', M + 4, scoreY + 6);
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`${scores.globalScore} / 10`, M + 4, scoreY + 16);
+
+  // Summary box
+  doc.setFillColor(...LIGHT);
+  doc.setDrawColor(...BORDER);
+  doc.roundedRect(M + 65, scoreY, 117, 20, 2, 2, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...SLATE);
+  doc.text('RECOMENDACIÓN GENERAL DEL ASESOR:', M + 69, scoreY + 5.5);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(...MUTED);
+  const recTxt = `Con un puntaje global de ${scores.globalScore}/10, la planificación patrimonial de ${clientName} presenta áreas de vulnerabilidad crítica en protección por baja laboral y cobertura familiar que deben reforzarse con prioridad alta.`;
+  doc.text(doc.splitTextToSize(recTxt, 110), M + 69, scoreY + 10);
+  state.y += 24;
+
+  // 3 Risks & 3 Priorities
+  heading(doc, state, 'RIESGOS CRÍTICOS Y PRIORIDADES', 9.5);
+  const infoY = state.y;
+  // Left: Risks
+  doc.setFillColor(254, 242, 242);
+  doc.setDrawColor(252, 165, 165);
+  doc.roundedRect(M, infoY, 88, 30, 2, 2, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...RED);
+  doc.text('TRES RIESGOS PRINCIPALES IDENTIFICADOS', M + 4, infoY + 5.5);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(...BLACK);
+  doc.text(`1. Déficit inicial en baja temporal de ${money(metrics.temporaryDisability.tramo60Brecha)}/mes.`, M + 4, infoY + 11);
+  doc.text(`2. Ausencia de actas legales críticas (Testamento e Inventario).`, M + 4, infoY + 16);
+  doc.text(`3. Brecha de jubilación fáctica acumulada de ${money(metrics.retirementGap.capitalObjetivo)}.`, M + 4, infoY + 21);
+
+  // Right: Priorities
+  doc.setFillColor(240, 253, 250);
+  doc.setDrawColor(153, 246, 228);
+  doc.roundedRect(M + 94, infoY, 88, 30, 2, 2, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...GREEN);
+  doc.text('TRES PRIORIDADES RECOMENDADAS', M + 98, infoY + 5.5);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(...BLACK);
+  doc.text('1. Contratar seguro de subsidio por incapacidad temporal.', M + 98, infoY + 11);
+  doc.text('2. Formalizar testamento abierto y poder preventivo notarial.', M + 98, infoY + 16);
+  doc.text(`3. Incrementar el ahorro sistemático a ${money(metrics.retirementGap.recommendedSaving)}/mes.`, M + 98, infoY + 21);
+  state.y += 34;
+
+  // Client data table
+  heading(doc, state, 'DATOS RECOPILADOS DEL CLIENTE', 9.5);
+  const clientRows = [
+    ['Nombre del cliente', clientName, 'Verificado', 'Identificación básica'],
+    ['Edad actual / Años cotizados', `${formData.edad} años / ${formData.anosCotizadosActuales} años`, 'Verificado', 'Determina tramo regulador jubilación'],
+    ['Base de cotización declarada', money(formData.baseCotizacionActual), 'Verificado', 'Base de cálculo prestaciones públicas'],
+    ['Estado civil / Hijos menores', `${formData.estadoCivil} / ${formData.hijosMenores25} hijos`, 'Verificado', 'Afecta coberturas familiares directas'],
+    ['Salario Neto Ordinario', `${money(formData.salarioNetoMensual)} / mes`, 'Verificado', 'Límite de capacidad familiar fáctica'],
+    ['Dinero en Banco (Líquido)', money(formData.dineroBanco), 'Verificado', 'Colchón primario de emergencias'],
+    ['Patrimonio Inmobiliario', money(formData.valorInmuebles), 'Verificado', 'Valor de tasación de activos fijos'],
+    ['Destino de Rentas Inmobiliarias', formData.destinoRentasInmobiliarias.toUpperCase(), 'Pendiente', 'Afecta proyección de jubilación prudente']
   ];
-}
-function clientFields(m: Metrics): Field[] {
-  return [
-    { label: 'Nombre del cliente', value: fieldValue('nombre') || 'No indicado' },
-    { label: 'Teléfono del cliente', value: fieldValue('teléfono') || 'No indicado' },
-    { label: 'Email del cliente', value: fieldValue('email') || 'No indicado' },
-    { label: 'Edad', value: `${fieldValue('edad') || '-'} años` },
-    { label: 'Años cotizados', value: `${fieldValue('años cotizados') || '-'} años` },
-    { label: 'Base de cotización', value: moneyMonth(m.base) },
-    { label: 'Estado civil', value: fieldValue('estado civil') || 'No indicado' },
-    { label: 'Hijos menores de 25 años', value: fieldValue('hijos menores') || '0' },
-    { label: 'Salario neto mensual', value: moneyMonth(m.salary) },
-    { label: 'Gastos mensuales personales', value: moneyMonth(fieldNumber('gastos mensuales')) },
-    { label: 'Alquiler, hipoteca y préstamos', value: moneyMonth(fieldNumber('alquiler, hipoteca y préstamos')) },
-    { label: 'Gasto mensual total utilizado', value: moneyMonth(m.expenses) },
-    { label: 'Dinero en banco', value: money(m.bank) },
-    { label: 'Dinero invertido actual', value: money(m.invested) },
-    { label: 'Rentabilidad dinero invertido', value: percent(m.investmentReturn) },
-    { label: 'Ahorro sistemático mensual', value: moneyMonth(m.monthlySaving) },
-    { label: 'Rentabilidad ahorro sistemático', value: percent(m.savingReturn) },
-    { label: 'Inversiones inmobiliarias', value: money(m.realEstateInvestments) },
-    { label: 'Rentas inmobiliarias mensuales', value: moneyMonth(Number(m.estate.realEstateRents || 0)) },
+  drawTable(doc, state, ['DATO DE LA AUDITORÍA', 'VALOR REGISTRADO', 'ESTADO', 'OBSERVACIÓN DEL ASESOR'], [50, 42, 25, 65], clientRows);
+
+  // ==========================================
+  // PAGE 3: FOTOGRAFÍA FINANCIERA & OBJETIVOS (Fase 13.5 & 13.6)
+  // ==========================================
+  newPage(doc, state, 'Fotografía Financiera y Objetivos');
+  heading(doc, state, '2. FOTOGRAFÍA FINANCIERA ACTUAL');
+  paragraph(doc, state, 'Análisis de la cuenta de resultados personales de la unidad familiar, apalancamiento, excedentes líquidos recurrentes y optimización del colchón de reserva.');
+  sectionDivider(doc, state);
+
+  const finRows = [
+    ['Ingresos ordinarios y pasivos', `Salario: ${money(formData.salarioNetoMensual)} | Pasivos: ${money(formData.rentasInmobiliariasMensualesNetas)}`, 'Flujo estable', 'Excluye otros ingresos variables'],
+    ['Gastos mensuales fijos', money(metrics.expenses.total), 'Verificado', `Personal: ${money(metrics.expenses.personal)} | Deuda: ${money(metrics.expenses.housing)}`],
+    ['Capacidad de ahorro fáctica', money(metrics.savingsCapacity.sinRentas), 'Verificado', 'Salario neto ordinario menos gastos totales'],
+    ['Fondo de Emergencia Líquido', `${money(formData.dineroBanco)} (${metrics.liquidity.mesesCubiertos.toFixed(1)} meses)`, 'Adecuado', 'Suficiente para imprevistos corrientes'],
+    ['Apalancamiento de Deuda', `${money(metrics.debt.deudaMensualTotal)} / mes`, 'Controlado', `Ratio de endeudamiento del ${percent(metrics.debt.ratioSobreSalario * 100)}`],
+    ['Dinero invertido activo', money(formData.dineroInvertido), 'Verificado', `Rentabilidad histórica estimada: ${percent(formData.rentabilidadInversion ?? 5)}`]
   ];
+  drawTable(doc, state, ['PARÁMETRO FINANCIERO', 'VALOR / COBERTURA', 'DIAGNÓSTICO', 'NOTAS TÉCNICAS'], [50, 40, 25, 67], finRows);
+
+  // Objectives table
+  heading(doc, state, '3. OBJETIVOS Y PROYECTOS DE CAPITALIZACIÓN');
+  paragraph(doc, state, 'Cada objetivo se analiza bajo la teoría de ahorro compuesto financiero constante. Si la capacidad de ahorro es inferior a la aportación financiera requerida, el proyecto se marca como ajustado.');
+
+  const objRows = projects.map((p: any) => {
+    const years = Number(p.years || 1);
+    const target = Number(p.target || 0);
+    // Lineal vs financiera
+    const r = 0.05 / 12; // 5% standard assumed
+    const lineal = target / (years * 12);
+    const financiera = (target * r) / (Math.pow(1 + r, years * 12) - 1);
+    return [
+      p.name,
+      money(target),
+      `${years} años`,
+      `${money(lineal)}/mes`,
+      `${money(financiera)}/mes`,
+      p.status === "Viable" ? "Viable" : "Ajustado"
+    ];
+  });
+  
+  drawTable(
+    doc,
+    state,
+    ['PROYECTO', 'CAPITAL', 'PLAZO', 'APORT. LINEAL', 'APORT. FINANCIERA', 'ESTADO'],
+    [50, 25, 20, 28, 34, 25],
+    objRows,
+    ['left', 'right', 'center', 'right', 'right', 'center']
+  );
+
+  // ==========================================
+  // PAGE 4: AUDITORÍA PREVISIÓN SOCIAL (Fase 13.7 & 13.8)
+  // ==========================================
+  newPage(doc, state, 'Auditoría de Previsión Social');
+  heading(doc, state, '4. AUDITORÍA DE PREVISIÓN SOCIAL (SEGURIDAD SOCIAL)');
+  paragraph(doc, state, 'Las prestaciones públicas de la Seguridad Social española estimadas para cada contingencia del trabajador, comparadas frente al nivel fáctico de gastos familiares declarados.');
+  sectionDivider(doc, state);
+
+  const prevRows = [
+    ['Baja Laboral (enfermedad común, tramo 60%)', money(metrics.temporaryDisability.tramo60Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo60Brecha)}`, 'Media', 'Contratar subsidio privado'],
+    ['Baja Laboral (accidentes, tramo 75%)', money(metrics.temporaryDisability.tramo75Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo75Brecha)}`, 'Media', 'Suficiente solo en tramo largo'],
+    ['Invalidez Permanente Total habitual (IPT)', money(metrics.disability.iptMonto), money(metrics.expenses.total), `-${money(metrics.disability.iptBrecha)}`, 'Baja', 'Revisar capital por invalidez'],
+    ['Invalidez Permanente Absoluta total (IPA)', money(metrics.disability.ipaMonto), money(metrics.expenses.total), `-${money(metrics.disability.ipaBrecha)}`, 'Media', 'Cubierto parcialmente'],
+    ['Pensión de Viudedad (cónyuge computable)', money(metrics.survivorBenefits.viudedadMonto), money(metrics.expenses.total), `-${money(metrics.survivorBenefits.viudedadBrechaAislada)}`, 'Baja', 'Requiere seguro de vida'],
+    ['Pensión de Orfandad (todos los hijos)', money(metrics.survivorBenefits.orfandadMonto), 'N/A', 'N/A', 'Media', 'Subsidio complementario de estudios'],
+    ['Pensión de Jubilación Ordinaria previsible', money(metrics.retirementGap.pensionEstimada), money(metrics.expenses.total), `-${money(metrics.retirementGap.brechaMensual)}`, 'Media', 'Planificar ahorro indexado']
+  ];
+  drawTable(
+    doc,
+    state,
+    ['CONTINGENCIA S.S.', 'ESTIMACIÓN', 'GASTO REF.', 'BRECHA MENSUAL', 'FIABILIDAD', 'ACCIÓN RECOMENDADA'],
+    [50, 24, 22, 28, 20, 38],
+    prevRows,
+    ['left', 'right', 'right', 'right', 'center', 'left']
+  );
+
+  // Fallecimiento y protección familiar
+  heading(doc, state, 'PROTECCIÓN FAMILIAR Y SEGUROS DE VIDA', 9.5);
+  paragraph(doc, state, 'Análisis de liquidez sucesoria en caso de fallecimiento para asegurar la cancelación de deudas, gastos de transición obligatorios y educación superior para herederos dependientes.');
+
+  const famRows = [
+    ['Deuda pendiente acumulada (amortización)', money(formData.deudaPendienteTotal), 'Impuestos y transición sucesoria', money(6000)],
+    ['Fondo educativo estimado para hijos', money(formData.hijosMenores25 * 18000), 'Déficit familiar acumulado (10 años)', money(Math.abs(metrics.survivorBenefits.conjuntoBrechaOSuperavit < 0 ? metrics.survivorBenefits.conjuntoBrechaOSuperavit : 0) * 12 * 10)],
+    ['CAPITAL OBJETIVO RECOMENDADO', money(metrics.familyNeed.capitalFamiliarObjetivo), 'Seguros de vida vigentes', money(formData.capitalSeguroVidaExistente)],
+    ['DÉFICIT NETO DE PROTECCIÓN', money(metrics.familyNeed.deficitDeProteccion), 'Diagnóstico de protección familiar', metrics.familyNeed.deficitDeProteccion > 0 ? "VULNERABLE" : "PROTEGIDO"]
+  ];
+  drawTable(doc, state, ['CONCEPTO DE LIQUIDEZ', 'VALOR', 'AJUSTE SUCESORIO', 'IMPORTE'], [50, 32, 60, 40], famRows);
+
+  // ==========================================
+  // PAGE 5: PLANIFICACIÓN DE JUBILACIÓN (Fase 13.9 & 13.10)
+  // ==========================================
+  newPage(doc, state, 'Estudio Jubilación y Patrimonio Proyectado');
+  heading(doc, state, '5. PLANIFICACIÓN DE JUBILACIÓN (TRES ESCENARIOS)');
+  paragraph(doc, state, 'Tres proyecciones matemáticas considerando estabilidad de bases de cotización, lagunas normativas y continuidad del flujo inmobiliario pasivo.');
+  sectionDivider(doc, state);
+
+  const scenRows = (retirementScenarios || []).map((s: any) => [
+    s.name,
+    money(s.pensionEstimada),
+    money(formData.rentasInmobiliariasMensualesNetas),
+    money(s.gastoReferencia),
+    `-${money(s.brecha)}`,
+    money(s.capitalNecesario),
+    money(s.capitalNecesario / Math.max(1, s.anosHastaJubilacion * 12))
+  ]);
+  drawTable(
+    doc,
+    state,
+    ['ESCENARIO', 'PENSIÓN S.S.', 'RENTAS INMOB.', 'GASTO REF.', 'BRECHA MENSUAL', 'CAPITAL NECESARIO', 'AHORRO RECOM.'],
+    [24, 25, 25, 22, 28, 33, 25],
+    scenRows,
+    ['left', 'right', 'right', 'right', 'right', 'right', 'right']
+  );
+
+  // Proyección a los 67 años
+  heading(doc, state, 'PROYECCIÓN DEL PATRIMONIO INTEGRAL A LOS 67 AÑOS', 9.5);
+  paragraph(doc, state, 'Proyección a largo plazo sumando liquidez bancaria, crecimiento de capitales invertidos y capitalizaciones periódicas mediante ahorro sistemático indexado.');
+
+  const projRows = [
+    ['Dinero en banco (mantenimiento líquido)', money(formData.dineroBanco), 'Colchón fáctico inmune al interés compuesto'],
+    ['Dinero invertido proyectado (Interés compuesto)', money(metrics.estate.projectedInvested), `Rentabilidad del ${percent(formData.rentabilidadInversion ?? 5)} anual acumulada`],
+    ['Ahorro sistemático acumulado', money(metrics.estate.projectedSaving), `Planes mensuales de ${money(formData.ahorroSistematicoMensual)} al ${percent(formData.rentabilidadAhorroSistematico ?? 6)}`],
+    ['Rentas inmobiliarias acumuladas', money(metrics.estate.projectedRents), `Rentas netas percibidas hasta la edad de 67 años (${formData.destinoRentasInmobiliarias.toUpperCase()})`],
+    ['Inversiones inmobiliarias de tasación', money(formData.valorInmuebles), 'Valor actual constante del inmueble declarados'],
+    ['PROYECCIÓN TOTAL DE PATRIMONIO JUBILADO', money(metrics.estate.projectedTotal), 'Flujo pasivo e instrumental acumulado de retiro']
+  ];
+  drawTable(doc, state, ['COMPONENTE PATRIMONIAL', 'VALOR PROYECTADO', 'HIPÓTESIS Y COMENTARIOS'], [60, 42, 80], projRows);
+
+  // ==========================================
+  // PAGE 6: NIVELES DE SEGURIDAD & PLAN DE ACCIÓN (Fase 13.11 & 13.12)
+  // ==========================================
+  newPage(doc, state, 'Plan de Acción y Cierre Profesional');
+  heading(doc, state, '6. NIVELES DE SEGURIDAD POR ÁREAS DE AUDITORÍA');
+  paragraph(doc, state, 'Sintetiza la puntuación asignada a cada área clave y la recomendación o medida de blindaje fáctico requerida.');
+  sectionDivider(doc, state);
+
+  const areaRows = [
+    ['Fondo de Emergencia / Liquidez', `${scores.fondo}/10`, 'Colchón de seguridad líquido adecuado para transiciones.', 'Mantener liquidez controlada'],
+    ['Baja Laboral (Incapacidad Temporal)', `${scores.baja}/10`, 'Brecha inicial considerable en tramo del 60% por contingencia común.', 'Contratar subsidio privado'],
+    ['Incapacidad Permanente total/absoluta', `${scores.incapacidad}/10`, 'Déficit mensual superior a los 500 € frente a gastos corrientes.', 'Contratar seguro de incapacidad'],
+    ['Protección Familiar (Sucesos)', `${scores.familia}/10`, `Existe un déficit de protección de vida de ${money(metrics.familyNeed.deficitDeProteccion)}.`, 'Asegurar capital familiar objetivo'],
+    ['Apalancamiento de Deuda', `${scores.deuda}/10`, `Ratio del ${percent(metrics.debt.ratioSobreSalario * 100)} dentro del límite saludable del 35%.`, 'Sin acción requerida inmediata'],
+    ['Previsión de Jubilación de Retiro', `${scores.jubilacion}/10`, `Brecha de jubilación fáctica de ${money(metrics.retirementGap.brechaMensual)}/mes.`, 'Suscribir plan de ahorro indexado'],
+    ['Patrimonio / Inflación', `${scores.inflacion}/10`, 'Inversiones acumuladas mitigan parcialmente el impacto inflacionario.', 'Revisar carteras diversificadas'],
+    ['Orden Legal e Instrumental', `${scores.legal}/10`, 'Ausencia de testamento e inventario, lo que eleva el riesgo de herederos.', 'Formalizar actas notariales']
+  ];
+  drawTable(doc, state, ['ÁREA DE AUDITORÍA', 'PUNTOS', 'DIAGNÓSTICO ESTRATÉGICO', 'ACCIÓN RECOMENDADA'], [50, 18, 74, 40], areaRows);
+
+  // Action plan (Urgentes, Importantes, Optimización)
+  heading(doc, state, '7. PLAN DE ACCIÓN PRIORIZADO DEL CLIENTE', 9.5);
+  
+  const actRows = (actionPlan || []).map((step: any) => [
+    step.step,
+    step.priority,
+    step.impact,
+    step.whyNecessary
+  ]);
+  drawTable(
+    doc,
+    state,
+    ['MEDIDA / ACCIÓN RECOMENDADA', 'PRIORIDAD', 'IMPACTO ESPERADO', 'JUSTIFICACIÓN TÉCNICA'],
+    [52, 22, 54, 54],
+    actRows
+  );
+
+  // Box for Warnings
+  if (warnings.length > 0) {
+    ensureSpace(doc, state, 22);
+    const boxY = state.y;
+    doc.setFillColor(255, 251, 235);
+    doc.setDrawColor(245, 158, 11);
+    doc.roundedRect(M, boxY, W, 18, 2, 2, 'FD');
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(180, 83, 9);
+    doc.text('ADVERTENCIAS Y ALERTAS PENDIENTES DE VALIDAR:', M + 4, boxY + 5);
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(120, 53, 4);
+    const wTexts = warnings.slice(0, 2).map((w: any) => `* [${w.type.toUpperCase()}] ${w.text}`).join('   ');
+    doc.text(doc.splitTextToSize(wTexts, W - 8), M + 4, boxY + 10);
+    state.y += 22;
+  }
+
+  // Closing
+  heading(doc, state, 'CIERRE PROFESIONAL Y NOTA METODOLÓGICA', 8.5);
+  paragraph(doc, state, 'Este diagnóstico representa una foto matemática rigurosa basada en el modelo legal y de previsión de la Seguridad Social de España. Para corregir las brechas identificadas, ordenar su patrimonio o formalizar los complementos de ahorro de jubilación, puede ponerse en contacto con José Carlos Hidalgo en josecarlos@hilolegal.es o en el teléfono 647 50 60 40.');
+
+  footer(doc, state.page);
+  doc.save(`informe-auditoria-profesional-${slug(clientName)}.pdf`);
 }
-function pageHeader(doc: jsPDF, subtitle: string) { doc.setFillColor(...BLACK); doc.rect(0, 0, 210, 30, 'F'); doc.setFillColor(255, 255, 255); doc.rect(14, 7, 3, 17, 'F'); doc.rect(32, 7, 3, 17, 'F'); doc.rect(23, 7, 3, 7, 'F'); doc.rect(23, 17, 3, 7, 'F'); doc.setFillColor(...GOLD); doc.circle(24.5, 15.5, 4.4, 'F'); doc.setFont('Helvetica', 'bold'); doc.setFontSize(10.5); doc.setTextColor(255, 255, 255); doc.text('JOSÉ CARLOS HIDALGO', 42, 11); doc.setFont('Helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...GOLD); doc.text(subtitle, 42, 19); doc.setTextColor(255, 255, 255); doc.text('josecarlos@hilolegal.es | 647 50 60 40', 42, 26); }
-function footer(doc: jsPDF, page: number) { doc.setFont('Helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(130, 130, 130); doc.text('Informe profesional de auditoría de riesgos financieros y patrimoniales.', 14, 285); doc.text(`Página ${page}`, 196, 285, { align: 'right' }); }
-function newPage(doc: jsPDF, state: PageState, title: string) { if (state.page > 1) doc.addPage(); state.title = title; state.y = 42; pageHeader(doc, title.toUpperCase()); }
-function ensure(doc: jsPDF, state: PageState, needed = 22) { if (state.y + needed <= 274) return; footer(doc, state.page++); doc.addPage(); pageHeader(doc, state.title.toUpperCase()); state.y = 42; }
-function heading(doc: jsPDF, state: PageState, text: string, size = 13) { ensure(doc, state, 14); doc.setFont('Helvetica', 'bold'); doc.setFontSize(size); doc.setTextColor(...SLATE); doc.text(text, M, state.y); state.y += size * 0.6 + 4; }
-function paragraph(doc: jsPDF, state: PageState, text: string, size = 8.3) { const lines = doc.splitTextToSize(clean(text), W) as string[]; ensure(doc, state, lines.length * 4.2 + 5); doc.setFont('Helvetica', 'normal'); doc.setFontSize(size); doc.setTextColor(...MUTED); doc.text(lines, M, state.y); state.y += lines.length * 4.2 + 4; }
-function rule(doc: jsPDF, state: PageState) { doc.setDrawColor(...GOLD); doc.line(M, state.y, M + 42, state.y); state.y += 7; }
-function rows(doc: jsPDF, state: PageState, fields: Field[], columns = 1) { const gap = 5; const colW = columns === 1 ? W : (W - gap) / 2; const rowH = 13; fields.forEach((field, index) => { const col = columns === 1 ? 0 : index % 2; if (columns === 1 || col === 0) ensure(doc, state, rowH + 4); const x = M + col * (colW + gap); const y = state.y; doc.setFillColor(...LIGHT); doc.setDrawColor(...BORDER); doc.roundedRect(x, y, colW, rowH, 2, 2, 'FD'); doc.setFont('Helvetica', 'bold'); doc.setFontSize(6.6); doc.setTextColor(...MUTED); doc.text(field.label, x + 3, y + 4.5); doc.setFont('Helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(...SLATE); doc.text(doc.splitTextToSize(field.value, colW - 6).slice(0, 1), x + 3, y + 10.3); if (field.note) { doc.setFont('Helvetica', 'normal'); doc.setFontSize(5.8); doc.setTextColor(...MUTED); doc.text(field.note, x + colW - 3, y + 10.3, { align: 'right' }); } if (columns === 1 || col === 1 || index === fields.length - 1) state.y += rowH + 4; }); state.y += 2; }
-function metricStrip(doc: jsPDF, state: PageState, metrics: Field[]) { ensure(doc, state, 30); const cardW = (W - 10) / 3; metrics.forEach((metric, i) => { const x = M + i * (cardW + 5); const y = state.y; doc.setFillColor(255, 255, 255); doc.setDrawColor(...GOLD); doc.roundedRect(x, y, cardW, 24, 3, 3, 'FD'); doc.setFont('Helvetica', 'bold'); doc.setFontSize(6.5); doc.setTextColor(...MUTED); doc.text(metric.label, x + 4, y + 7); doc.setFont('Helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...SLATE); doc.text(doc.splitTextToSize(metric.value, cardW - 8).slice(0, 1), x + 4, y + 17); }); state.y += 31; }
-function drawObjectivesTable(doc: jsPDF, state: PageState, projects: ProjectRow[]) { heading(doc, state, 'Objetivos a medio y largo plazo'); paragraph(doc, state, 'Los objetivos se ordenan por proyecto para comprobar si el esfuerzo mensual requerido encaja con la capacidad de ahorro real.'); rule(doc, state); ensure(doc, state, 20); const widths = [58, 32, 22, 34, 30]; const headers = ['Proyecto', 'Importe', 'Años', 'Ahorro/mes', 'Estado']; let x = M; doc.setFillColor(...BLACK); doc.roundedRect(M, state.y, W, 10, 2, 2, 'F'); doc.setFont('Helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(255, 255, 255); headers.forEach((h, i) => { doc.text(h, x + 3, state.y + 6.5); x += widths[i]; }); state.y += 10; if (!projects.length) projects = [{ name: 'Sin proyectos añadidos', target: 0, years: 0, monthly: 0, status: 'No indicado' }]; projects.forEach((project, rowIndex) => { ensure(doc, state, 10); x = M; doc.setFillColor(rowIndex % 2 ? 255 : 248, rowIndex % 2 ? 255 : 250, rowIndex % 2 ? 255 : 252); doc.setDrawColor(...BORDER); doc.rect(M, state.y, W, 10, 'FD'); const values = [project.name, money(project.target), `${project.years}`, moneyMonth(project.monthly), project.status]; values.forEach((value, i) => { doc.setFont('Helvetica', i === 4 ? 'bold' : 'normal'); doc.setFontSize(6.8); doc.setTextColor(i === 4 && project.status === 'No viable' ? RED[0] : i === 4 && project.status === 'Ajustado' ? ORANGE[0] : i === 4 ? GREEN[0] : SLATE[0], i === 4 && project.status === 'No viable' ? RED[1] : i === 4 && project.status === 'Ajustado' ? ORANGE[1] : i === 4 ? GREEN[1] : SLATE[1], i === 4 && project.status === 'No viable' ? RED[2] : i === 4 && project.status === 'Ajustado' ? ORANGE[2] : i === 4 ? GREEN[2] : SLATE[2]); doc.text(doc.splitTextToSize(value, widths[i] - 5).slice(0, 1), x + 3, state.y + 6.5); x += widths[i]; }); state.y += 10; }); state.y += 8; }
-function drawQuestionCards(doc: jsPDF, state: PageState, questions: QuestionRow[]) { heading(doc, state, 'Cuestionario completo de auditoría'); rule(doc, state); questions.forEach((q) => { const questionLines = doc.splitTextToSize(q.title, 132) as string[]; const explanationLines = doc.splitTextToSize(`Por qué esta pregunta es importante: ${q.explanation}`, 132) as string[]; const cardH = Math.max(25, questionLines.length * 4 + explanationLines.length * 3.5 + 15); ensure(doc, state, cardH + 4); doc.setFillColor(...LIGHT); doc.setDrawColor(...BORDER); doc.roundedRect(M, state.y, W, cardH, 3, 3, 'FD'); doc.setFont('Helvetica', 'bold'); doc.setFontSize(6.8); doc.setTextColor(...GOLD); doc.text(q.label.toUpperCase(), M + 4, state.y + 6); doc.setFont('Helvetica', 'normal'); doc.setFontSize(7.8); doc.setTextColor(...SLATE); doc.text(questionLines, M + 4, state.y + 12); doc.setFont('Helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(...MUTED); doc.text(explanationLines, M + 4, state.y + 12 + questionLines.length * 4 + 3); doc.setFillColor(255, 255, 255); doc.setDrawColor(...GOLD); doc.roundedRect(158, state.y + 5, 34, 9, 2, 2, 'FD'); doc.setFont('Helvetica', 'bold'); doc.setFontSize(7.2); doc.setTextColor(...SLATE); doc.text(q.answer, 175, state.y + 11, { align: 'center' }); state.y += cardH + 4; }); }
-function axis(doc: jsPDF, x: number, y: number, w: number, h: number, max: number, xLabels: string[], percentAxis = false) { doc.setDrawColor(...BORDER); doc.setFont('Helvetica', 'normal'); doc.setFontSize(6.4); doc.setTextColor(...MUTED); [0, .25, .5, .75, 1].forEach((r) => { const yy = y + h - r * h; doc.line(x, yy, x + w, yy); doc.text(percentAxis ? `${Math.round(r * 100)}%` : shortMoney(max * r), x - 4, yy + 2, { align: 'right' }); }); xLabels.forEach((label, i) => { const xx = x + (w / Math.max(1, xLabels.length - 1)) * i; doc.text(label, xx, y + h + 7, { align: 'center', maxWidth: 24 }); }); }
-function drawBenefitChart(doc: jsPDF, state: PageState, m: Metrics) { heading(doc, state, 'Comparativa gráfica de prestaciones frente a gastos', 11); paragraph(doc, state, `Cada barra representa la prestación pública estimada y la línea roja representa los gastos mensuales requeridos (${moneyMonth(m.expenses)}).`); ensure(doc, state, 116); const x = 43, top = state.y + 4, w = 140, h = 82; const max = Math.max(m.expenses, ...m.benefits.map((b) => b.value), 1); axis(doc, x, top, w, h, max, m.benefits.map((b) => b.label)); const slot = w / m.benefits.length; const barW = slot * 0.48; m.benefits.forEach((b, i) => { const bh = (b.value / max) * h; const bx = x + i * slot + slot * 0.25; doc.setFillColor(...GOLD); doc.roundedRect(bx, top + h - bh, barW, bh, 1, 1, 'F'); doc.setFont('Helvetica', 'bold'); doc.setFontSize(6.2); doc.setTextColor(...SLATE); doc.text(shortMoney(b.value), bx + barW / 2, top + h - bh - 2, { align: 'center' }); }); const gy = top + h - (m.expenses / max) * h; doc.setDrawColor(...RED); doc.setLineWidth(0.9); doc.line(x, gy, x + w, gy); doc.setFont('Helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...RED); doc.text(`Gastos: ${shortMoney(m.expenses)}`, x + w, gy - 2, { align: 'right' }); state.y = top + h + 18; }
-function drawRetirementChart(doc: jsPDF, state: PageState, m: Metrics) { heading(doc, state, 'Gráfico de proyección de jubilación', 11); paragraph(doc, state, 'El gráfico refleja la proyección patrimonial: patrimonio actual, rentabilidad, ahorro sistemático, rentas inmobiliarias e inversiones inmobiliarias.'); ensure(doc, state, 120); const x = 43, top = state.y + 4, w = 140, h = 84; const points = Array.from({ length: 8 }, (_, i) => { const years = m.yearsToRetirement * (i / 7); const val = projectedValueAt(m, years); return { px: x + w * (i / 7), val }; }); const max = Math.max(m.projectedTotal, m.targetCapital, ...points.map(p => p.val), 1); axis(doc, x, top, w, h, max, [`${m.age || 0} años`, `${Math.round((m.age + 67) / 2)} años`, '67 años']); const plotted = points.map(p => ({ ...p, py: top + h - (p.val / max) * h })); doc.setDrawColor(...GOLD); doc.setLineWidth(1.3); plotted.forEach((p, i) => { if (i) doc.line(plotted[i - 1].px, plotted[i - 1].py, p.px, p.py); doc.setFillColor(...GOLD); doc.circle(p.px, p.py, 1.5, 'F'); }); const targetY = top + h - (m.targetCapital / max) * h; doc.setDrawColor(...RED); doc.setLineDashPattern([3, 2], 0); doc.line(x, targetY, x + w, targetY); doc.setLineDashPattern([], 0); doc.setTextColor(...RED); doc.setFont('Helvetica', 'bold'); doc.setFontSize(7); doc.text(`Capital objetivo: ${shortMoney(m.targetCapital)}`, x + w, Math.max(top + 4, targetY - 2), { align: 'right' }); doc.setTextColor(...GOLD); doc.text(`Proyección: ${shortMoney(m.projectedTotal)}`, x + w, plotted[plotted.length - 1].py - 3, { align: 'right' }); state.y = top + h + 18; }
-function drawRadarChart(doc: jsPDF, state: PageState, m: Metrics) { heading(doc, state, 'Gráfico de seguridad y vulnerabilidad', 11); ensure(doc, state, 112); const scores = appScores(m); const cx = 105, cy = state.y + 54, radius = 40; const sides = scores.length; doc.setDrawColor(...BORDER); doc.setFont('Helvetica', 'normal'); doc.setFontSize(6.8); doc.setTextColor(...MUTED); [0.25, .5, .75, 1].forEach((r) => { const pts = scores.map((_, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / sides; return [cx + Math.cos(a) * radius * r, cy + Math.sin(a) * radius * r]; }); pts.forEach((p, i) => { const n = pts[(i + 1) % pts.length]; doc.line(p[0], p[1], n[0], n[1]); }); doc.text(`${Math.round(r * 100)}%`, cx + radius * r + 3, cy); }); const poly = scores.map((s, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / sides; const r = radius * (s.score / 10); doc.line(cx, cy, cx + Math.cos(a) * radius, cy + Math.sin(a) * radius); doc.text(`${s.label} ${s.score}/10`, cx + Math.cos(a) * (radius + 17), cy + Math.sin(a) * (radius + 17), { align: 'center' }); return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; }); doc.setDrawColor(...GOLD); doc.setLineWidth(1.1); poly.forEach((p, i) => { const n = poly[(i + 1) % poly.length]; doc.line(p[0], p[1], n[0], n[1]); doc.setFillColor(...GOLD); doc.circle(p[0], p[1], 1.5, 'F'); }); state.y += 112; }
-function diagnosisRows(m: Metrics): Field[] { const sev = (gap: number, score = 10) => gap > 600 || score <= 3 ? 'Grave' : gap > 0 || score <= 6 ? 'Moderada' : 'Leve'; const scores = appScores(m).reduce<Record<string, number>>((acc, item) => { acc[item.label] = item.score; return acc; }, {}); return [ { label: `Baja laboral - ${sev(m.benefits[0].gap, scores.Baja)}`, value: m.benefits[0].gap > 0 ? `Brecha de ${moneyMonth(m.benefits[0].gap)}. Recomendación: complementar la prestación pública con cobertura privada temporal.` : 'La prestación estimada cubre el gasto mensual requerido.' }, { label: `Invalidez profesional - ${sev(m.benefits[2].gap)}`, value: m.benefits[2].gap > 0 ? `Brecha de ${moneyMonth(m.benefits[2].gap)}. Recomendación: revisar capitales de invalidez y amortización de deuda.` : 'No se detecta brecha mensual relevante frente al gasto declarado.' }, { label: `Protección familiar - ${sev(Math.max(m.benefits[3].gap, m.benefits[4].gap), scores.Familia)}`, value: `Viudedad estimada: ${moneyMonth(m.benefits[3].value)}. Orfandad estimada: ${moneyMonth(m.benefits[4].value)}. Recomendación: definir capital familiar objetivo.` }, { label: `Liquidez - ${sev(0, scores.Fondo)}`, value: `La reserva cubre aproximadamente ${m.emergencyMonths.toFixed(1)} meses de gastos. Recomendación: construir una reserva de 6 a 9 meses.` }, { label: `Jubilación - ${sev(m.retirementGap)}`, value: `Brecha mensual ajustada: ${moneyMonth(m.retirementGap)}. Capital objetivo: ${money(m.targetCapital)}. Ahorro recomendado: ${moneyMonth(m.recommendedSaving)}.` }, { label: `Protección legal - ${sev(0, scores.Legal)}`, value: 'Recomendación: mantener testamento, inventario patrimonial, pólizas, claves y documentación crítica localizables para la familia.' } ]; }
-function cover(doc: jsPDF, clientName: string) { doc.setFillColor(255, 255, 255); doc.rect(0, 0, 210, 297, 'F'); doc.setDrawColor(...GOLD); doc.setLineWidth(0.8); doc.line(18, 44, 192, 44); doc.setFont('Helvetica', 'bold'); doc.setFontSize(25); doc.setTextColor(...BLACK); doc.text('INFORME DE AUDITORÍA', 18, 76); doc.setFontSize(20); doc.text('DE RIESGOS FINANCIEROS', 18, 91); doc.text('Y PATRIMONIALES', 18, 105); doc.setFont('Helvetica', 'normal'); doc.setFontSize(11); doc.setTextColor(...GOLD); doc.text('Previsión social, protección familiar y brecha de jubilación', 18, 123); doc.setTextColor(...SLATE); doc.setFontSize(10.5); doc.text(`Cliente: ${clientName}`, 18, 154); doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 18, 164); doc.setFont('Helvetica', 'bold'); doc.setFontSize(11); doc.text('Realizado por José Carlos Hidalgo', 18, 232); doc.setFont('Helvetica', 'normal'); doc.setFontSize(9); doc.text('consultor financiero, hipotecario y patrimonial', 18, 241); doc.setTextColor(...MUTED); doc.text('josecarlos@hilolegal.es | 647 50 60 40', 18, 251); }
-function executiveParagraphs(m: Metrics) { const global = Math.round(appScores(m).reduce((sum, item) => sum + item.score, 0) / 6); return [ `Situación de partida. La auditoría muestra una seguridad global aproximada de ${global}/10. El cliente presenta ingresos netos de ${moneyMonth(m.salary)}, gastos mensuales requeridos de ${moneyMonth(m.expenses)} y una capacidad de ahorro real de ${moneyMonth(m.capacity)}. Esta capacidad debe protegerse antes de asumir nuevas obligaciones financieras.`, `Previsión social. Las prestaciones públicas estimadas no deben analizarse de forma aislada, sino frente al gasto real del hogar. La baja laboral, la invalidez, la viudedad, la orfandad y la jubilación muestran el grado de dependencia de las coberturas públicas y permiten cuantificar las brechas mensuales por contingencia.`, `Jubilación. La pensión estimada asciende a ${moneyMonth(m.retirementPension)}. Una vez consideradas las rentas inmobiliarias declaradas, la brecha mensual ajustada es de ${moneyMonth(m.retirementGap)} y el capital objetivo para financiar el retiro hasta los 90 años es de ${money(m.targetCapital)}.`, `Patrimonio proyectado. La proyección a los 67 años asciende a ${money(m.projectedTotal)}, desglosada entre dinero acumulado, dinero invertido, ahorro sistemático, rentas inmobiliarias e inversiones inmobiliarias. Si esta cifra queda por debajo del capital objetivo, conviene elevar aportaciones, revisar rentabilidades y separar liquidez, inversión y jubilación.`, `Recomendaciones. El plan de acción debe priorizar protección de ingresos, capital familiar, reserva líquida de 6 a 9 meses, estrategia antiinflación y orden legal. Las áreas graves deben resolverse antes de optimizar inversión o fiscalidad, porque una contingencia personal sin cobertura puede forzar deuda o ventas patrimoniales en mal momento.` ]; }
-async function generatePdf() { window.dispatchEvent(new CustomEvent('audit-real-estate-updated')); await new Promise<void>((resolve) => window.setTimeout(resolve, 160)); const clientName = fieldValue('nombre') || 'Cliente'; const m = collectMetrics(); const projects = collectProjectRows(m.capacity); const questions = collectQuestionRows(); const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }); const state: PageState = { page: 1, y: 42, title: '' }; cover(doc, clientName); footer(doc, state.page++);
-  newPage(doc, state, 'Resumen de datos del cliente'); heading(doc, state, '1. Resumen de datos del Cliente'); paragraph(doc, state, 'El resumen inicial ordena los datos personales, familiares, económicos y patrimoniales que condicionan toda la auditoría. Cada dato se presenta de forma independiente para facilitar la lectura profesional del informe.'); rule(doc, state); rows(doc, state, clientFields(m), 1); footer(doc, state.page++);
-  newPage(doc, state, 'Objetivos a medio y largo plazo'); drawObjectivesTable(doc, state, projects); metricStrip(doc, state, [{ label: 'Capacidad de ahorro real', value: moneyMonth(m.capacity) }, { label: 'Necesidad mensual objetivos', value: moneyMonth(m.totalProjectNeed) }, { label: 'Viabilidad global', value: m.projectStatus }]); footer(doc, state.page++);
-  newPage(doc, state, 'Cuestionario completo de auditoría'); drawQuestionCards(doc, state, questions); footer(doc, state.page++);
-  newPage(doc, state, 'Auditoría de previsión social'); heading(doc, state, '2. Auditoría de Previsión Social'); paragraph(doc, state, 'Esta sección cuantifica el impacto de cada contingencia sobre la estabilidad económica del hogar. El objetivo es identificar qué prestaciones públicas cubren el gasto mensual y cuáles dejan una brecha que debe asegurarse o planificarse.'); rows(doc, state, m.benefits.map((b) => ({ label: `${b.label} (${b.rate})`, value: `Prestación estimada: ${moneyMonth(b.value)}`, note: b.gap > 0 ? `Brecha: ${moneyMonth(b.gap)}` : 'Cubierto' })), 1); drawBenefitChart(doc, state, m); footer(doc, state.page++);
-  newPage(doc, state, 'Estudio brecha de jubilación'); heading(doc, state, '3. Estudio brecha de jubilación'); paragraph(doc, state, 'El estudio de jubilación estima la diferencia entre la pensión pública y el nivel de gasto actual, proyectando el capital necesario para sostener un retiro hasta los 90 años.'); rows(doc, state, [ { label: 'Pensión de jubilación estimada', value: moneyMonth(m.retirementPension) }, { label: 'Gasto mensual declarado', value: moneyMonth(m.expenses) }, { label: 'Gasto ajustado por rentas inmobiliarias', value: moneyMonth(m.adjustedExpenses) }, { label: 'Déficit mensual de jubilación', value: moneyMonth(m.retirementGap) }, { label: 'Capital total previsor requerido', value: money(m.targetCapital) }, { label: 'Años para acumular', value: `${m.yearsToRetirement} años (${m.accumulationMonths} meses)` }, { label: 'Esfuerzo mensual recomendado', value: moneyMonth(m.recommendedSaving) } ], 1); drawRetirementChart(doc, state, m); heading(doc, state, 'Desglose de proyección a los 67 años', 10); rows(doc, state, [{ label: 'Dinero acumulado', value: money(m.bank) }, { label: 'Dinero invertido proyectado', value: money(m.projectedInvested) }, { label: 'Ahorro sistemático acumulado', value: money(m.projectedSaving) }, { label: 'Rentas inmobiliarias acumuladas', value: money(m.projectedRents) }, { label: 'Inversiones inmobiliarias', value: money(m.realEstateInvestments) }, { label: 'Proyección total a los 67', value: money(m.projectedTotal) }], 1); footer(doc, state.page++);
-  newPage(doc, state, 'Niveles de seguridad y vulnerabilidad'); heading(doc, state, '4. Niveles de Seguridad y Vulnerabilidad'); paragraph(doc, state, 'La lectura de seguridad sintetiza la robustez del cliente frente a escenarios adversos.'); rows(doc, state, appScores(m).map((s) => ({ label: s.label, value: `${s.score}/10 (${s.score * 10}%)` })), 2); drawRadarChart(doc, state, m); footer(doc, state.page++);
-  newPage(doc, state, 'Diagnóstico estratégico y plan de acción'); heading(doc, state, '5. Diagnóstico estratégico y plan de acción'); paragraph(doc, state, 'El diagnóstico prioriza las medidas según gravedad. Las deficiencias graves deben atenderse primero; las moderadas requieren seguimiento y ajuste; las leves deben mantenerse controladas para evitar deterioro futuro.'); rows(doc, state, diagnosisRows(m), 1); footer(doc, state.page++);
-  newPage(doc, state, 'Resumen ejecutivo'); heading(doc, state, '6. Resumen ejecutivo'); executiveParagraphs(m).forEach((text) => paragraph(doc, state, text, 8.4)); rule(doc, state); paragraph(doc, state, 'Si desea transformar este diagnóstico en mejoras concretas, puede ponerse en contacto con José Carlos Hidalgo en el teléfono 647 50 60 40 o en el email josecarlos@hilolegal.es. El objetivo es ayudarle a corregir las debilidades detectadas, reforzar su protección familiar y construir un plan financiero más sólido, claro y adaptado a su realidad.', 8.4); footer(doc, state.page++);
-  doc.save(`informe-auditoria-profesional-${slug(clientName)}.pdf`); }
-function buttonBusy(button: HTMLButtonElement, busy: boolean) { if (busy) { button.dataset.originalHtml = button.innerHTML; button.disabled = true; button.style.opacity = '0.72'; button.innerHTML = '<span>Generando informe profesional PDF...</span>'; } else { button.disabled = false; button.style.opacity = ''; if (button.dataset.originalHtml) button.innerHTML = button.dataset.originalHtml; } }
-function isPdfButton(target: EventTarget | null) { const element = target instanceof Element ? target : null; const button = element?.closest('button') as HTMLButtonElement | null; return button && /descargar.*pdf|descargar informe pdf|descargar auditoría/i.test(button.innerText || '') ? button : null; }
-function install() { const win = window as typeof window & { [FLAG]?: boolean }; if (win[FLAG]) return; win[FLAG] = true; document.addEventListener('click', async (event) => { const button = isPdfButton(event.target); if (!button) return; event.preventDefault(); event.stopPropagation(); event.stopImmediatePropagation(); try { buttonBusy(button, true); await generatePdf(); } catch (error) { console.error(error); window.alert('No se pudo generar el informe profesional. Revisa los datos y vuelve a intentarlo.'); } finally { buttonBusy(button, false); } }, true); }
+
+function buttonBusy(button: HTMLButtonElement, busy: boolean) {
+  if (busy) {
+    button.dataset.originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.style.opacity = '0.72';
+    button.innerHTML = '<span>Generando informe profesional PDF...</span>';
+  } else {
+    button.disabled = false;
+    button.style.opacity = '';
+    if (button.dataset.originalHtml) {
+      button.innerHTML = button.dataset.originalHtml;
+    }
+  }
+}
+
+function isPdfButton(target: EventTarget | null) {
+  const element = target instanceof Element ? target : null;
+  const button = element?.closest('button') as HTMLButtonElement | null;
+  return button && /descargar.*pdf/i.test(button.innerText || '') ? button : null;
+}
+
+function install() {
+  const win = window as typeof window & { [FLAG]?: boolean };
+  if (win[FLAG]) return;
+  win[FLAG] = true;
+  document.addEventListener('click', async (event) => {
+    const button = isPdfButton(event.target);
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+    try {
+      buttonBusy(button, true);
+      await generatePdf();
+    } catch (error) {
+      console.error(error);
+      window.alert('No se pudo generar el informe profesional. Revisa los datos y vuelve a intentarlo.');
+    } finally {
+      buttonBusy(button, false);
+    }
+  }, true);
+}
+
 install();

@@ -1,201 +1,1268 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BarChart3, Download, FileText, Mail, Phone, Shield, TrendingUp, UserRound } from "lucide-react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, Line, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { jsPDF } from "jspdf";
+import { 
+  AlertTriangle, 
+  BarChart3, 
+  Download, 
+  FileText, 
+  Mail, 
+  Phone, 
+  Shield, 
+  TrendingUp, 
+  UserRound, 
+  Briefcase, 
+  Scale, 
+  Clock, 
+  Coins, 
+  HelpCircle,
+  CheckCircle2,
+  AlertCircle,
+  HelpCircle as QuestionIcon,
+  ChevronRight
+} from "lucide-react";
+import { 
+  Area, 
+  AreaChart, 
+  Bar, 
+  BarChart, 
+  CartesianGrid, 
+  Legend, 
+  Line, 
+  PolarAngleAxis, 
+  PolarGrid, 
+  PolarRadiusAxis, 
+  Radar, 
+  RadarChart, 
+  ReferenceLine, 
+  ResponsiveContainer, 
+  Tooltip, 
+  XAxis, 
+  YAxis 
+} from "recharts";
+import { motion } from "motion/react";
 import { ClientData, PrestacionesCalculadas } from "./types";
+import {
+  formatCurrency,
+  formatPercent,
+  calculateMonthlyExpenses,
+  calculateRealSavingsCapacity,
+  calculateDebtRatios,
+  calculateLiquidity,
+  calculateTemporaryDisability,
+  calculatePermanentDisability,
+  calculateSurvivorBenefits,
+  calculateFamilyProtectionNeed,
+  calculateRetirementScenarios,
+  calculateRetirementGap,
+  calculateSavingsGoal,
+  calculateSecurityScores,
+  validateReportConsistency,
+  generateActionPlan,
+  Warning
+} from "./audit-calculations";
 
-type Severity = "grave" | "moderada" | "leve";
-type QuestionKey = keyof ClientData["preguntas"];
-type SavingProject = { id: number; name: string; target: number; years: number };
-
-const brand = { black: "#1A1A1A", navy: "#0F172A", gold: "#C5A566", goldDark: "#A8833F", orange: "#F97316", red: "#DC2626", green: "#16A34A" };
-const logoSvg = encodeURIComponent(`<svg width="120" height="140" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="8" width="18" height="124" fill="#fff"/><rect x="95" y="8" width="18" height="124" fill="#fff"/><rect x="52" y="8" width="16" height="48" fill="#fff"/><rect x="52" y="86" width="16" height="46" fill="#fff"/><circle cx="60" cy="70" r="27" fill="#C5A566"/><rect x="0" y="8" width="9" height="14" fill="#fff"/><rect x="0" y="118" width="9" height="14" fill="#fff"/><rect x="111" y="8" width="9" height="14" fill="#fff"/><rect x="111" y="118" width="9" height="14" fill="#fff"/></svg>`);
-const brandLogo = `data:image/svg+xml;charset=utf-8,${logoSvg}`;
-
-const defaultClientData: ClientData = {
-  nombre: "Carlos Gomez", telefono: "600 000 000", email: "cliente@email.com", edad: 38, anosCotizados: 12, baseCotizacion: 2800,
-  estadoCivil: "Casado/a", numeroHijos: 2, salarioNetoMensual: 2400, gastosMensuales: 1200, alquilerHipotecaPrestamos: 750,
-  dineroBanco: 9000, dineroInvertido: 4000, rentabilidadInversion: 5, ahorroSistematico: 150, rentabilidadAhorro: 6,
-  preguntas: { p01: "No", p02: "No", p03: "No", p04: "Si", p05: "No", p06: "No", p07: "No", p08: "No" },
-  proyectosMedioPlazo: "Comprar un coche familiar en 3 anos (18.000 EUR)",
-  objetivosLargoPlazo: "Crear un fondo de jubilacion privado para compensar la pension publica."
+const brand = { 
+  black: "#1A1A1A", 
+  navy: "#0F172A", 
+  gold: "#C5A566", 
+  goldDark: "#A8833F", 
+  orange: "#F97316", 
+  red: "#DC2626", 
+  green: "#16A34A" 
 };
 
-const eur = (value: number) => `${Math.round(value).toLocaleString("es-ES")} EUR`;
-const pct = (value: number) => `${Number(value).toLocaleString("es-ES")}%`;
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const logoSvg = encodeURIComponent(`<svg width="120" height="140" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="8" width="18" height="124" fill="#fff"/><rect x="95" y="8" width="18" height="124" fill="#fff"/><rect x="52" y="86" width="16" height="46" fill="#fff"/><circle cx="60" cy="70" r="27" fill="#C5A566"/></svg>`);
+const brandLogo = `data:image/svg+xml;charset=utf-8,${logoSvg}`;
+
+const initialClientData: ClientData = {
+  // Básicos (manteniendo compatibilidad)
+  nombre: "Carlos Gómez", 
+  telefono: "647 50 60 40", 
+  email: "cliente@email.com", 
+  edad: 38, 
+  anosCotizados: 12, 
+  baseCotizacion: 2800,
+  estadoCivil: "Casado/a", 
+  numeroHijos: 2, 
+  salarioNetoMensual: 2400, 
+  gastosMensuales: 1200, 
+  alquilerHipotecaPrestamos: 750,
+  dineroBanco: 9000, 
+  dineroInvertido: 4000, 
+  rentabilidadInversion: 5, 
+  ahorroSistematico: 150, 
+  rentabilidadAhorro: 6,
+  preguntas: { 
+    p01: "No", 
+    p02: "No", 
+    p03: "No", 
+    p04: "Si", 
+    p05: "No", 
+    p06: "No", 
+    p07: "No", 
+    p08: "No" 
+  },
+  proyectosMedioPlazo: "Comprar un coche familiar en 3 años (18.000 EUR)",
+  objetivosLargoPlazo: "Crear un fondo de jubilación privado para compensar la pensión pública.",
+
+  // Fase 2 ampliada: Personales y familiares
+  hijosMenores25: 2,
+  hijosDependientes: 2,
+  edadHijos: "8, 12",
+  conyugeConIngresos: "Si",
+  ingresosConyuge: 1500,
+  dependenciaEconomicaDelCliente: "Media",
+
+  // Económicos
+  otrosIngresosNetos: 0,
+  gastoMensualPersonal: 1200,
+  viviendaPrestamosMensual: 750,
+  capacidadAhorroDeclarada: 150,
+  ahorroSistematicoMensual: 150,
+  rentabilidadAhorroSistematico: 6,
+
+  // Inmobiliarios
+  valorInmuebles: 180000,
+  rentasInmobiliariasMensualesBrutas: 3000,
+  rentasInmobiliariasMensualesNetas: 2400,
+  gastosInmobiliariosMensuales: 300,
+  impuestosInmobiliariosEstimados: 300,
+  deudaInmobiliariaPendiente: 0,
+  rentasInmobiliariasDisponibles: 2400,
+  destinoRentasInmobiliarias: "desconocido",
+
+  // Deudas
+  cuotaHipoteca: 750,
+  cuotaPrestamos: 0,
+  cuotaTarjetas: 0,
+  deudaPendienteTotal: 125000,
+  seguroVidaVinculado: "Si",
+  capitalSeguroVidaExistente: 50000,
+  capitalSeguroIncapacidadExistente: 0,
+
+  // Laboral y Seguridad Social
+  regimenSeguridadSocial: "General",
+  anosCotizadosActuales: 12,
+  baseCotizacionActual: 2800,
+  basesCotizacionHistoricasDisponibles: "Pendiente",
+  edadJubilacionEstimada: 67,
+  convenioComplementaBaja: "Pendiente",
+  empresaComplementaBaja: "Pendiente",
+  seguroPrivadoBaja: "No",
+  subsidioPrivadoDiario: 0,
+  profesion: "Responsable Administrativo",
+  autonomo: false,
+  contingenciaPreferente: "comun",
+
+  // Legal
+  tieneTestamento: "No",
+  tienePoderPreventivo: "No",
+  tieneInventarioPatrimonial: "No",
+  familiaConoceDocumentacion: "No",
+  beneficiariosRevisados: "Pendiente",
+  protocoloEmergenciaFamiliar: "No"
+};
+
+type ActiveFormTab = "personal" | "economico" | "deuda" | "seguridad" | "patrimonio" | "legal";
 
 export default function App() {
-  const [formData, setFormData] = useState<ClientData>(defaultClientData);
-  const [prestaciones, setPrestaciones] = useState<PrestacionesCalculadas>({ it: 0, ipa: 0, ipt: 0, viudedad: 0, orfandad: 0, jubilacion: 0 });
-  const [projects, setProjects] = useState<SavingProject[]>([
-    { id: 1, name: "Comprar coche familiar", target: 18000, years: 3 },
-    { id: 2, name: "Fondo de jubilacion privado", target: 60000, years: 20 }
+  const [formData, setFormData] = useState<ClientData>(initialClientData);
+  const [activeTab, setActiveTab] = useState<ActiveFormTab>("personal");
+  const [goals, setGoals] = useState<Array<{ id: number; name: string; target: number; years: number; priority: "Alta" | "Media" | "Baja" }>>([
+    { id: 1, name: "Comprar coche familiar", target: 18000, years: 3, priority: "Media" },
+    { id: 2, name: "Fondo de jubilación", target: 72000, years: 29, priority: "Alta" }
   ]);
-  const [draftProject, setDraftProject] = useState<SavingProject>({ id: 0, name: "Nuevo objetivo", target: 12000, years: 5 });
+  const [draftGoal, setDraftGoal] = useState({ name: "Coche familiar", target: 18000, years: 3, priority: "Media" as "Alta" | "Media" | "Baja" });
 
-  const gastosTotales = Number(formData.gastosMensuales) + Number(formData.alquilerHipotecaPrestamos);
-  const ahorroDisponible = Number(formData.salarioNetoMensual) - gastosTotales;
-  const capacidadAhorroReal = Math.max(0, ahorroDisponible);
+  // 1. Calculations via custom engine
+  const rentasNetas = formData.destinoRentasInmobiliarias !== "desconocido" ? formData.rentasInmobiliariasMensualesNetas : 0;
+  
+  const expenses = useMemo(() => calculateMonthlyExpenses(formData), [formData]);
+  const savingsCapacity = useMemo(() => calculateRealSavingsCapacity(formData, rentasNetas), [formData, rentasNetas]);
+  const debt = useMemo(() => calculateDebtRatios(formData, rentasNetas), [formData, rentasNetas]);
+  const liquidity = useMemo(() => calculateLiquidity(formData, expenses.total), [formData, expenses.total]);
+  const temporaryDisability = useMemo(() => calculateTemporaryDisability(formData, expenses.total), [formData, expenses.total]);
+  const permanentDisability = useMemo(() => calculatePermanentDisability(formData, expenses.total), [formData, expenses.total]);
+  const survivorBenefits = useMemo(() => calculateSurvivorBenefits(formData, expenses.total), [formData, expenses.total]);
+  const familyNeed = useMemo(() => calculateFamilyProtectionNeed(formData, survivorBenefits.conjuntoBrechaOSuperavit), [formData, survivorBenefits.conjuntoBrechaOSuperavit]);
+  const retirementScenarios = useMemo(() => calculateRetirementScenarios(formData, expenses.total), [formData, expenses.total]);
+  
+  // Scenarios selection: Central as principal
+  const centralScenario = retirementScenarios.find(s => s.name === "Central")!;
+  const retirementGap = useMemo(() => calculateRetirementGap(formData, centralScenario.pensionEstimada, rentasNetas, expenses.total), [formData, centralScenario.pensionEstimada, rentasNetas, expenses.total]);
 
-  const calculateBenefits = (data: ClientData): PrestacionesCalculadas => {
-    const base = Number(data.baseCotizacion);
-    const married = data.estadoCivil === "Casado/a" || data.estadoCivil === "Pareja de Hecho";
-    const yearsToRetirement = Math.max(0, 67 - Number(data.edad));
-    const estimatedYears = Number(data.anosCotizados) + yearsToRetirement;
-    const retirementRate = estimatedYears < 15 ? 0 : estimatedYears >= 36.5 ? 1 : 0.5 + (estimatedYears - 15) * (0.5 / 21.5);
-    return { it: base * 0.75, ipa: base, ipt: Number(data.edad) >= 55 ? base * 0.75 : base * 0.55, viudedad: married ? base * 0.52 : 0, orfandad: base * 0.2 * Number(data.numeroHijos), jubilacion: base * retirementRate };
-  };
+  // Aggregate Metrics object
+  const metrics = useMemo(() => ({
+    expenses,
+    savingsCapacity,
+    debt,
+    liquidity,
+    temporaryDisability,
+    disability: permanentDisability,
+    survivorBenefits,
+    familyNeed,
+    retirementScenarios,
+    retirementGap,
+    realEstateInvestments: formData.valorInmuebles,
+    estate: {
+      realEstateRents: formData.rentasInmobiliariasMensualesNetas,
+      adjustedExpenses: expenses.total - rentasNetas,
+      retirementPension: centralScenario.pensionEstimada,
+      retirementGap: retirementGap.brechaMensual,
+      projectedInvested: formData.dineroInvertido * Math.pow(1 + (formData.rentabilidadInversion || 5)/100, Math.max(0, 67 - formData.edad)),
+      projectedSaving: (formData.rentabilidadAhorro || 6) > 0 ? (formData.ahorroSistematico || 150) * 12 * ((Math.pow(1 + (formData.rentabilidadAhorro || 6)/100, Math.max(0, 67 - formData.edad)) - 1) / ((formData.rentabilidadAhorro || 6)/100)) : (formData.ahorroSistematico || 150) * 12 * Math.max(0, 67 - formData.edad),
+      projectedRents: (formData.destinoRentasInmobiliarias === "reinversion" || formData.destinoRentasInmobiliarias === "mixto") ? formData.rentasInmobiliariasMensualesNetas * 12 * Math.max(0, 67 - formData.edad) : 0,
+      projectedTotal: 0 // Will compute dynamically
+    }
+  }), [formData, expenses, savingsCapacity, debt, liquidity, temporaryDisability, permanentDisability, survivorBenefits, familyNeed, retirementScenarios, retirementGap, rentasNetas, centralScenario]);
 
-  useEffect(() => setPrestaciones(calculateBenefits(formData)), [formData]);
+  metrics.estate.projectedTotal = formData.dineroBanco + metrics.estate.projectedInvested + metrics.estate.projectedSaving + metrics.estate.projectedRents + formData.valorInmuebles;
 
-  const deficits = { it: gastosTotales - prestaciones.it, ipa: gastosTotales - prestaciones.ipa, ipt: gastosTotales - prestaciones.ipt, viudedad: gastosTotales - prestaciones.viudedad, orfandad: gastosTotales - prestaciones.orfandad, jubilacion: gastosTotales - prestaciones.jubilacion };
-  const yearsToRetirement = Math.max(0, 67 - Number(formData.edad));
-  const retirementGap = Math.max(0, deficits.jubilacion);
-  const targetCapital = retirementGap * 12 * 23;
-  const emergencyMonths = gastosTotales > 0 ? Number(formData.dineroBanco) / gastosTotales : 0;
-  const deficitMensualSS = Math.max(0, Math.round(retirementGap));
-  const retirementMonths = 23 * 12;
-  const accumulationMonths = Math.max(1, yearsToRetirement * 12);
-  const recommendedRetirementSaving = Math.ceil(targetCapital / accumulationMonths);
-  const benefitChartData = [
-    { name: "Baja laboral", Prestacion: Math.round(prestaciones.it), Gastos: Math.round(gastosTotales) },
-    { name: "Inv. absoluta", Prestacion: Math.round(prestaciones.ipa), Gastos: Math.round(gastosTotales) },
-    { name: "Inv. profesional", Prestacion: Math.round(prestaciones.ipt), Gastos: Math.round(gastosTotales) },
-    { name: "Viudedad", Prestacion: Math.round(prestaciones.viudedad), Gastos: Math.round(gastosTotales) },
-    { name: "Orfandad", Prestacion: Math.round(prestaciones.orfandad), Gastos: Math.round(gastosTotales) },
-    { name: "Jubilacion", Prestacion: Math.round(prestaciones.jubilacion), Gastos: Math.round(gastosTotales) }
-  ];
+  const scores = useMemo(() => calculateSecurityScores(formData, metrics), [formData, metrics]);
+  const warnings = useMemo(() => validateReportConsistency(formData), [formData]);
+  const actionPlan = useMemo(() => generateActionPlan(formData, metrics), [formData, metrics]);
 
-  const scores = {
-    fondo: clamp(Math.round(emergencyMonths * 1.8), 1, 10),
-    baja: formData.preguntas.p01 === "Si" ? 10 : formData.preguntas.p01 === "Parcialmente" ? 6 : 2,
-    familia: formData.preguntas.p02 === "Si" ? 10 : 3,
-    sanitario: formData.preguntas.p03 === "Si" ? 10 : 3,
-    inflacion: formData.preguntas.p06 === "Si" ? 10 : Number(formData.dineroBanco) > 6000 ? 2 : 5,
-    legal: (formData.preguntas.p07 === "Si" ? 5 : 1) + (formData.preguntas.p08 === "Si" ? 5 : 1)
-  };
-  const globalScore = Math.round((scores.fondo + scores.baja + scores.familia + scores.sanitario + scores.inflacion + scores.legal) / 6);
+  // Exposing to global scope for professional-audit-pdf-v3 integration
+  useEffect(() => {
+    (window as any).currentAuditData = {
+      formData,
+      projects: goals.map(g => ({ name: g.name, target: g.target, years: g.years, monthly: g.target / (g.years * 12), status: savingsCapacity.sinRentas > 0 && (g.target / (g.years * 12)) <= savingsCapacity.sinRentas ? "Viable" : "Ajustado" })),
+      metrics,
+      scores,
+      warnings,
+      actionPlan,
+      retirementScenarios,
+    };
+  }, [formData, goals, metrics, scores, warnings, actionPlan, retirementScenarios, savingsCapacity]);
 
-  const auditQuestions: Array<{ key: QuestionKey; label: string; title: string; explanation: string }> = [
-    { key: "p01", label: "Baja laboral privada", title: "¿Tienes protección privada que complemente la baja laboral?", explanation: "Comprueba si los ingresos seguirían cubriendo gastos fijos si una enfermedad o accidente impide trabajar durante varios meses." },
-    { key: "p02", label: "Seguro familiar", title: "¿Tu familia tendría capital suficiente ante fallecimiento o invalidez grave?", explanation: "Mide si el hogar podría sostener vivienda, estudios, impuestos y transición de ingresos sin depender solo de prestaciones públicas." },
-    { key: "p03", label: "Sanidad privada", title: "¿Dispones de acceso sanitario privado o alternativa equivalente?", explanation: "Valora rapidez de diagnóstico y tratamiento ante contingencias que afecten a la capacidad de generar ingresos." },
-    { key: "p04", label: "Motor económico", title: "¿Tienes identificado quién sostiene económicamente la unidad familiar?", explanation: "Permite priorizar coberturas en la persona cuya ausencia o incapacidad tendría mayor impacto financiero." },
-    { key: "p05", label: "Jubilación privada", title: "¿Tienes un plan privado para complementar la pensión pública?", explanation: "Determina si existe una estrategia de capitalización para cubrir la brecha entre pensión estimada y nivel de vida deseado." },
-    { key: "p06", label: "Inversión antiinflación", title: "¿Tu dinero trabaja para batir inflación e impuestos?", explanation: "Analiza si el exceso de liquidez pierde poder adquisitivo o se canaliza hacia instrumentos adecuados a plazo y riesgo." },
-    { key: "p07", label: "Testamento", title: "¿Tienes testamento y estructura legal actualizada?", explanation: "Reduce incertidumbre, costes y conflictos en sucesión, especialmente con hijos, vivienda, pareja o patrimonio financiero." },
-    { key: "p08", label: "Acceso familiar", title: "¿Tu familia sabría localizar documentación, claves y pólizas?", explanation: "Comprueba si existe un protocolo familiar para actuar rápido ante fallecimiento, invalidez o urgencia patrimonial." }
-  ];
-
-  const projectRows = projects.map((project) => {
-    const monthly = project.target / Math.max(1, project.years * 12);
-    const viable = capacidadAhorroReal > 0 && monthly <= capacidadAhorroReal;
-    const close = capacidadAhorroReal > 0 && monthly > capacidadAhorroReal && monthly <= capacidadAhorroReal * 1.15;
-    return { ...project, monthly, status: viable ? "Viable" : close ? "Ajustado" : "No viable", color: viable ? "emerald" : close ? "orange" : "red" };
-  });
-  const totalMonthlyProjects = projectRows.reduce((sum, project) => sum + project.monthly, 0);
-  const globalProjectStatus = capacidadAhorroReal <= 0 || totalMonthlyProjects > capacidadAhorroReal * 1.15 ? "No viable" : totalMonthlyProjects > capacidadAhorroReal ? "Ajustado" : "Viable";
-
-  const projectionData = useMemo(() => {
-    const invRate = Number(formData.rentabilidadInversion ?? 5) / 100;
-    const savRate = Number(formData.rentabilidadAhorro ?? 6) / 100;
-    const annualSaving = Number(formData.ahorroSistematico ?? 0) * 12;
-    return Array.from({ length: Math.max(15, yearsToRetirement) + 1 }, (_, year) => {
-      const saving = savRate > 0 ? annualSaving * ((Math.pow(1 + savRate, year) - 1) / savRate) : annualSaving * year;
-      const total = Number(formData.dineroBanco) + Number(formData.dineroInvertido) * Math.pow(1 + invRate, year) + saving;
-      return { edad: Number(formData.edad) + year, "Patrimonio Total": Math.round(total), "Plan de Ahorro": Math.round(saving), "Capital Objetivo": Math.round(targetCapital) };
+  // Syncing basic fields when expanded changes
+  const updateField = (field: keyof ClientData, value: any) => {
+    setFormData(prev => {
+      const next = { ...prev, [field]: value };
+      // Sync basic compatibility fields
+      if (field === "gastoMensualPersonal") next.gastosMensuales = Number(value);
+      if (field === "viviendaPrestamosMensual") next.alquilerHipotecaPrestamos = Number(value);
+      if (field === "anosCotizadosActuales") next.anosCotizados = Number(value);
+      if (field === "baseCotizacionActual") next.baseCotizacion = Number(value);
+      if (field === "ahorroSistematicoMensual") next.ahorroSistematico = Number(value);
+      if (field === "rentabilidadAhorroSistematico") next.rentabilidadAhorro = Number(value);
+      return next;
     });
-  }, [formData, targetCapital, yearsToRetirement]);
-  const projectedAtRetirement = projectionData[Math.min(yearsToRetirement, projectionData.length - 1)]?.["Patrimonio Total"] ?? 0;
-  const radarData = [
-    { subject: "Fondo", score: scores.fondo * 10 }, { subject: "Baja", score: scores.baja * 10 }, { subject: "Familia", score: scores.familia * 10 },
-    { subject: "Sanidad", score: scores.sanitario * 10 }, { subject: "Inflación", score: scores.inflacion * 10 }, { subject: "Legal", score: scores.legal * 10 }
-  ];
-
-  const severity = (gap: number, warning = 10): Severity => gap > 600 || warning <= 3 ? "grave" : gap > 0 || warning <= 6 ? "moderada" : "leve";
-  const diagnostics = [
-    { area: "Baja laboral e incapacidad temporal", severity: severity(deficits.it), issue: deficits.it > 0 ? `Brecha mensual de ${eur(deficits.it)} entre prestación pública y gasto real.` : "La prestación estimada cubre el gasto mensual declarado.", action: "Revisar o contratar subsidio privado por baja laboral que cubra el diferencial mensual real." },
-    { area: "Invalidez y protección profesional", severity: severity(deficits.ipt), issue: deficits.ipt > 0 ? `La invalidez profesional dejaría un déficit mensual de ${eur(deficits.ipt)}.` : "No muestra déficit frente al gasto actual.", action: "Ajustar capitales de invalidez y amortización de deuda para proteger vivienda, préstamos e ingresos." },
-    { area: "Protección familiar", severity: severity(Math.max(deficits.viudedad, deficits.orfandad, 0)), issue: Math.max(deficits.viudedad, deficits.orfandad) > 0 ? `Brecha familiar potencial de hasta ${eur(Math.max(deficits.viudedad, deficits.orfandad, 0))} al mes.` : "La cobertura familiar estimada no presenta brecha mensual relevante.", action: "Definir capital de vida temporal para vivienda, educación, impuestos y transición de ingresos." },
-    { area: "Fondo de emergencia y liquidez", severity: severity(0, scores.fondo), issue: `La reserva cubre aproximadamente ${emergencyMonths.toFixed(1)} meses de gastos.`, action: "Construir una reserva líquida de 6 a 9 meses y separarla del capital de inversión." },
-    { area: "Jubilación e inflación", severity: severity(deficits.jubilacion, scores.inflacion), issue: retirementGap > 0 ? `La jubilación proyectada deja una brecha mensual de ${eur(retirementGap)}.` : "La pensión estimada cubre el gasto mensual declarado.", action: "Aumentar ahorro sistemático, diversificar capital improductivo y revisar rentabilidad neta después de impuestos." },
-    { area: "Protección legal", severity: severity(0, scores.legal), issue: scores.legal < 8 ? "Falta reforzar testamento, inventario patrimonial o protocolo de acceso familiar." : "La protección legal declarada es adecuada.", action: "Formalizar testamento, inventario patrimonial y acceso familiar a documentación crítica." }
-  ];
-  const advice = [
-    "Las prestaciones públicas se calculan sobre bases reguladoras y porcentajes; el informe confronta esas cifras con el gasto real del hogar para detectar brechas vendibles y accionables.",
-    "La protección de ingresos debe resolverse antes que la optimización fiscal o de inversión: sin ingresos, cualquier estrategia patrimonial queda condicionada por urgencias.",
-    "La brecha de jubilación se calcula hasta los 90 años para mostrar el capital objetivo necesario y el efecto del ahorro sistemático con interés compuesto.",
-    "La reserva de emergencia, la inversión de medio plazo y el ahorro de jubilación deben estar separados para evitar ventas forzadas o exceso de liquidez improductiva.",
-    "El protocolo legal y familiar convierte el informe en una herramienta práctica: testamento, pólizas, claves, beneficiarios y documentación localizable."
-  ];
-  const actions = [
-    { p: "Alta", s: "Cubrir brechas rojas de ingresos y protección familiar", w: "Evita que una contingencia personal se convierta en crisis financiera." },
-    { p: "Alta", s: "Crear reserva líquida de 6 a 9 meses", w: "Permite decidir sin endeudarse ni vender inversiones en mal momento." },
-    { p: "Media", s: "Aumentar ahorro sistemático para jubilación", w: "Cada año perdido exige mayor esfuerzo mensual futuro." },
-    { p: "Media", s: "Separar dinero de corto, medio y largo plazo", w: "Cada euro debe tener una función clara: seguridad, proyectos o independencia." },
-    { p: "Baja", s: "Formalizar protocolo documental y legal", w: "La planificación pierde eficacia si la familia no puede localizar documentación." }
-  ];
-  const executiveSummary = `Desde una perspectiva de previsión social y auditoría de riesgos personales, la situación de ${formData.nombre} presenta una seguridad global de ${globalScore}/10. El análisis cruza ingresos, gastos fijos, bases de cotización, prestaciones públicas estimadas, protección familiar, liquidez disponible, exposición a inflación y preparación legal. La prioridad no es únicamente mejorar la rentabilidad, sino ordenar la arquitectura de protección: primero asegurar ingresos ante baja, invalidez o fallecimiento; después consolidar una reserva de emergencia suficiente; y finalmente optimizar la acumulación de capital para jubilación y objetivos de largo plazo. La brecha mensual de jubilación asciende a ${eur(retirementGap)}, lo que exige un capital objetivo aproximado de ${eur(targetCapital)} para sostener el nivel de vida entre los 67 y los 90 años. Con una rentabilidad estimada del ${pct(Number(formData.rentabilidadInversion ?? 0))} para el dinero invertido y del ${pct(Number(formData.rentabilidadAhorro ?? 0))} para el ahorro sistemático, el patrimonio proyectado a los 67 años sería de ${eur(projectedAtRetirement)}. Si la proyección no cubre el capital objetivo, conviene aumentar aportaciones, revisar la asignación de activos y separar claramente liquidez, inversión de medio plazo y ahorro finalista de jubilación. Las deficiencias graves deben resolverse antes de asumir más riesgo financiero, porque una contingencia personal sin cobertura puede obligar a endeudarse, liquidar inversiones o comprometer el patrimonio familiar. Como conclusión operativa, el plan debe priorizar protección de ingresos, capital familiar, reserva líquida de 6 a 9 meses, estrategia antiinflación y documentación legal accesible para la familia.`;
-
-  const updateField = <K extends keyof ClientData>(field: K, value: ClientData[K]) => setFormData((current) => ({ ...current, [field]: value }));
-  const updateQuestion = (field: QuestionKey, value: string) => setFormData((current) => ({ ...current, preguntas: { ...current.preguntas, [field]: value } }));
-  const updateProject = (id: number, patch: Partial<SavingProject>) => setProjects(current => current.map(project => project.id === id ? { ...project, ...patch } : project));
-  const addProject = () => setProjects(current => [...current, { ...draftProject, id: Date.now(), years: clamp(Number(draftProject.years), 1, 20), target: Math.max(0, Number(draftProject.target)) }]);
-  const removeProject = (id: number) => setProjects(current => current.filter(project => project.id !== id));
-
-  const drawLogo = (doc: jsPDF, x: number, y: number) => { doc.setFillColor(255,255,255); doc.rect(x,y,3,20,"F"); doc.rect(x+18,y,3,20,"F"); doc.rect(x+9,y,3,8,"F"); doc.rect(x+9,y+12,3,8,"F"); doc.setFillColor(197,165,102); doc.circle(x+10.5,y+10,5,"F"); };
-  const header = (doc: jsPDF, title: string) => { doc.setFillColor(26,26,26); doc.rect(0,0,210,34,"F"); drawLogo(doc,14,7); doc.setFont("Helvetica","bold"); doc.setFontSize(11); doc.setTextColor(255,255,255); doc.text("JOSÉ CARLOS HIDALGO",42,12); doc.setFontSize(8.5); doc.setTextColor(197,165,102); doc.text(title,42,19); doc.setFont("Helvetica","normal"); doc.setFontSize(7.2); doc.setTextColor(255,255,255); doc.text("Email: josecarlos@hilolegal.es | Teléfono: 647 50 60 40",42,27); };
-  const footer = (doc: jsPDF, page: number) => { doc.setFontSize(7); doc.setTextColor(120,120,120); doc.text("Informe diagnóstico orientativo. Requiere validación personalizada antes de contratar productos financieros o aseguradores.",14,283); doc.text(`Página ${page}`,196,283,{align:"right"}); };
-  const pageTitle = (doc: jsPDF, title: string) => { doc.setFont("Helvetica","bold"); doc.setFontSize(13); doc.setTextColor(17,24,39); doc.text(title,14,48); };
-  const drawBenefitChart = (doc: jsPDF, x: number, y: number, w: number, h: number) => { const maxVal = Math.max(gastosTotales, ...benefitChartData.map(item => item.Prestacion), 1); doc.setDrawColor(226,232,240); doc.rect(x,y,w,h,"D"); const barW = w / benefitChartData.length * 0.48; benefitChartData.forEach((item,i)=>{ const slot = w / benefitChartData.length; const bx = x + i * slot + slot * 0.26; const bh = (item.Prestacion / maxVal) * (h - 12); doc.setFillColor(197,165,102); doc.rect(bx, y + h - bh - 10, barW, bh, "F"); doc.setFontSize(5.8); doc.setTextColor(71,85,105); doc.text(item.name, bx + barW / 2, y + h - 3, { align: "center", maxWidth: slot - 2 }); }); const gy = y + h - 10 - (gastosTotales / maxVal) * (h - 12); doc.setDrawColor(220,38,38); doc.setLineWidth(.8); doc.line(x, gy, x + w, gy); doc.setFontSize(7); doc.setTextColor(220,38,38); doc.text(`Gastos mensuales requeridos: ${eur(gastosTotales)}`, x + w - 2, gy - 2, { align: "right" }); };
-
-  const downloadPDFReport = () => {
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" }); let page = 1;
-    const newPage = (title: string) => { if (page > 1) doc.addPage(); header(doc,title); };
-    newPage("AUDITORÍA DE PREVISIÓN SOCIAL"); pageTitle(doc,"1. Resumen de Datos del Cliente"); doc.setFont("Helvetica","normal"); doc.setFontSize(9);
-    [`Nombre: ${formData.nombre}`,`Teléfono: ${formData.telefono || "No indicado"}`,`Email: ${formData.email || "No indicado"}`,`Edad: ${formData.edad} años | Cotizados: ${formData.anosCotizados} años`,`Estado civil: ${formData.estadoCivil} | Hijos menores de 25 años: ${formData.numeroHijos}`,`Ingresos netos: ${eur(formData.salarioNetoMensual)} / mes`,`Gastos totales: ${eur(gastosTotales)} / mes`,`Base de cotización: ${eur(formData.baseCotizacion)} / mes`,`Patrimonio líquido + inversión: ${eur(formData.dineroBanco + formData.dineroInvertido)}`].forEach((line,i)=>doc.text(line,18,60+i*6));
-    doc.setFont("Helvetica","bold"); doc.setFontSize(13); doc.text("1.1 Objetivos a medio y largo plazo",14,122); doc.setFont("Helvetica","normal"); doc.setFontSize(8);
-    doc.text(`Capacidad real de ahorro: ${eur(capacidadAhorroReal)} / mes | Necesidad total proyectos: ${eur(totalMonthlyProjects)} / mes | Estado: ${globalProjectStatus}`,18,134);
-    projectRows.slice(0,6).forEach((project,i)=>{const y=146+i*10; doc.text(`${project.name}: ${eur(project.target)} en ${project.years} años -> ${eur(project.monthly)} / mes (${project.status})`,18,y);}); footer(doc,page++);
-
-    newPage("AUDITORÍA DE PREVISIÓN SOCIAL"); pageTitle(doc,"2. Auditoría de Previsión Social"); doc.setFontSize(8); doc.text("Prestación",18,65); doc.text("Estimación",82,65); doc.text("Gasto",122,65); doc.text("Resultado",158,65);
-    [["Baja laboral",prestaciones.it,deficits.it],["Invalidez absoluta",prestaciones.ipa,deficits.ipa],["Invalidez profesional",prestaciones.ipt,deficits.ipt],["Viudedad",prestaciones.viudedad,deficits.viudedad],["Orfandad",prestaciones.orfandad,deficits.orfandad],["Jubilación",prestaciones.jubilacion,deficits.jubilacion]].forEach(([label,benefit,gap],i)=>{const y=75+i*8; doc.setFont("Helvetica","normal"); doc.setTextColor(31,41,55); doc.text(String(label),18,y); doc.text(eur(Number(benefit)),82,y); doc.text(eur(gastosTotales),122,y); doc.setTextColor(Number(gap)>0?220:22,Number(gap)>0?38:163,Number(gap)>0?38:74); doc.text(Number(gap)>0?`Brecha ${eur(Number(gap))}`:"Cubierto",158,y);}); doc.setFont("Helvetica","bold"); doc.setFontSize(10); doc.setTextColor(17,24,39); doc.text("Comparativa gráfica de prestaciones frente a gastos",14,132); drawBenefitChart(doc,18,140,174,70); footer(doc,page++);
-
-    newPage("ESTUDIO BRECHA DE JUBILACIÓN"); pageTitle(doc,"3. Estudio brecha de jubilación"); doc.setFillColor(15,23,42); doc.setDrawColor(249,115,22); doc.setLineWidth(.8); doc.rect(14,56,182,34,"FD"); doc.setFont("Helvetica","bold"); doc.setFontSize(9); doc.setTextColor(249,115,22); doc.text("ESTUDIO PREVISOR: BRECHA DE JUBILACIÓN HASTA LOS 90 AÑOS",18,66); doc.setFont("Helvetica","normal"); doc.setFontSize(7.4); doc.setTextColor(255,255,255); doc.text(`Considerando una esperanza de vida de 90 años, financiando un retiro de 23 años (${retirementMonths} meses) tras jubilarse a los 67 años:`,18,75); doc.setFont("Helvetica","bold"); doc.text(`• Déficit mensual S.S.: ${eur(deficitMensualSS)} / mes`,18,84); doc.text(`• Capital total previsor requerido: ${eur(targetCapital)}`,112,84); doc.setTextColor(249,180,91); doc.text(`• Años para acumular: ${yearsToRetirement} años (${accumulationMonths} meses)`,18,91); doc.text(`• Esfuerzo mensual recomendado: ${eur(recommendedRetirementSaving)} / mes`,112,91);
-    doc.setFont("Helvetica","normal"); doc.setFontSize(8.6); doc.setTextColor(71,85,105); doc.text(doc.splitTextToSize(`La brecha de jubilación compara el gasto mensual (${eur(gastosTotales)}) con la pensión pública estimada (${eur(prestaciones.jubilacion)}). El capital objetivo necesario para sostener el nivel de vida desde los 67 hasta los 90 años es ${eur(targetCapital)}. El patrimonio proyectado a los 67 años es ${eur(projectedAtRetirement)}.`,178),14,105);
-    const chartX=20, chartY=145, chartW=165, chartH=58, maxVal=Math.max(targetCapital,...projectionData.map(d=>d["Patrimonio Total"]),1); doc.rect(chartX,chartY,chartW,chartH,"D"); const pt=(v:number,i:number)=>({x:chartX+(i/Math.max(1,projectionData.length-1))*chartW,y:chartY+chartH-(v/maxVal)*chartH}); doc.setLineWidth(.7); doc.setDrawColor(197,165,102); projectionData.forEach((d,i)=>{if(i){const a=pt(projectionData[i-1]["Patrimonio Total"],i-1),b=pt(d["Patrimonio Total"],i); doc.line(a.x,a.y,b.x,b.y);}}); doc.setDrawColor(59,130,246); projectionData.forEach((d,i)=>{if(i){const a=pt(projectionData[i-1]["Plan de Ahorro"],i-1),b=pt(d["Plan de Ahorro"],i); doc.line(a.x,a.y,b.x,b.y);}}); doc.setDrawColor(220,38,38); doc.setLineDashPattern([2,2],0); doc.line(chartX,pt(targetCapital,0).y,chartX+chartW,pt(targetCapital,0).y); doc.setLineDashPattern([],0); doc.setFontSize(7); doc.setTextColor(100,116,139); doc.text("Ocre: patrimonio total | Azul: plan de ahorro | Rojo: capital objetivo",20,213); footer(doc,page++);
-
-    newPage("NIVELES DE SEGURIDAD Y VULNERABILIDAD"); pageTitle(doc,"4. Niveles de Seguridad y Vulnerabilidad"); [["Fondo de emergencia",scores.fondo],["Protección por baja laboral",scores.baja],["Protección familiar",scores.familia],["Acceso sanitario",scores.sanitario],["Inflación e inversión",scores.inflacion],["Protección legal",scores.legal]].forEach(([label,score],i)=>{const y=65+i*17; doc.setFont("Helvetica","bold"); doc.setFontSize(8.5); doc.setTextColor(31,41,55); doc.text(`${label}: ${score}/10`,18,y); doc.setFillColor(229,231,235); doc.rect(18,y+4,150,5,"F"); doc.setFillColor(Number(score)<=3?220:Number(score)<=6?234:22,Number(score)<=3?38:Number(score)<=6?88:163,Number(score)<=3?38:Number(score)<=6?12:74); doc.rect(18,y+4,Number(score)*15,5,"F");}); footer(doc,page++);
-
-    doc.addPage(); header(doc,"CUESTIONARIO COMPLETO"); pageTitle(doc,"4.1 Cuestionario completo"); let qy=62; auditQuestions.forEach((q,i)=>{ if(qy>248){ footer(doc,page++); doc.addPage(); header(doc,"CUESTIONARIO COMPLETO"); pageTitle(doc,"4.1 Cuestionario completo"); qy=62; } const titleLines=doc.splitTextToSize(`${i+1}. ${q.label}: ${formData.preguntas[q.key]}`,174); const explanationLines=doc.splitTextToSize(q.explanation,174); doc.setFont("Helvetica","bold"); doc.setFontSize(8.4); doc.setTextColor(17,24,39); doc.text(titleLines,18,qy); qy+=titleLines.length*4.3+2; doc.setFont("Helvetica","normal"); doc.setFontSize(7.6); doc.setTextColor(71,85,105); doc.text(explanationLines,18,qy); qy+=explanationLines.length*4.2+7; }); footer(doc,page++);
-
-    doc.addPage(); header(doc,"MAPA HEXAGONAL DE VULNERABILIDAD"); pageTitle(doc,"4.2 Gráfico hexagonal de vulnerabilidad"); const cx=80,cy=132,r=42,radarScores=[scores.fondo,scores.baja,scores.familia,scores.sanitario,scores.inflacion,scores.legal],labels=["Fondo","Baja","Familia","Sanidad","Inflación","Legal"]; const rp=(i:number,p:number)=>{const a=-Math.PI/2+(i*Math.PI)/3; return {x:cx+Math.cos(a)*r*p,y:cy+Math.sin(a)*r*p};}; [0.25,0.5,0.75,1].forEach(level=>{doc.setDrawColor(226,232,240); for(let i=0;i<6;i++){const a=rp(i,level),b=rp((i+1)%6,level); doc.line(a.x,a.y,b.x,b.y);}}); for(let i=0;i<6;i++){const o=rp(i,1),l=rp(i,1.18); doc.line(cx,cy,o.x,o.y); doc.setFontSize(7); doc.text(labels[i],l.x,l.y,{align:"center"});} const points=radarScores.map((s,i)=>rp(i,s/10)); doc.setDrawColor(197,165,102); doc.setLineWidth(.8); points.forEach((p,i)=>{const n=points[(i+1)%points.length]; doc.line(p.x,p.y,n.x,n.y); doc.circle(p.x,p.y,1,"F");}); doc.setFontSize(8.5); doc.setTextColor(71,85,105); doc.text(doc.splitTextToSize(`Lectura: una figura pequeña o deformada indica concentración de riesgo. La puntuación global actual es ${globalScore}/10. Las áreas más débiles deben resolverse antes de optimizar fiscalidad o rentabilidad.`,78),120,92); footer(doc,page++);
-
-    newPage("DIAGNÓSTICO ESTRATÉGICO Y PLAN DE ACCIÓN"); pageTitle(doc,"5. Diagnóstico estratégico y plan de acción"); doc.setFont("Helvetica","normal"); doc.setFontSize(8.5); doc.text(doc.splitTextToSize(`Resumen integral de la auditoría: la seguridad global es ${globalScore}/10. Las deficiencias se clasifican por gravedad para priorizar medidas.`,178),14,60); let y=78; diagnostics.forEach((d,i)=>{const c=d.severity==="grave"?brand.red:d.severity==="moderada"?brand.orange:brand.green; doc.setFont("Helvetica","bold"); doc.setFontSize(8.8); doc.setTextColor(c); doc.text(`${i+1}. ${d.area} - ${d.severity.toUpperCase()}`,14,y); doc.setFont("Helvetica","normal"); doc.setFontSize(7.8); doc.setTextColor(51,65,85); doc.text(doc.splitTextToSize(`Deficiencia: ${d.issue}`,178),18,y+6); doc.text(doc.splitTextToSize(`Plan de acción: ${d.action}`,178),18,y+16); y+=34;}); footer(doc,page++);
-
-    doc.addPage(); header(doc,"RECOMENDACIONES TÉCNICAS AMPLIADAS"); pageTitle(doc,"5.1 Recomendaciones técnicas ampliadas"); let ay=62; advice.forEach((text,i)=>{doc.setFont("Helvetica","bold"); doc.setFontSize(9); doc.setTextColor(197,165,102); doc.text(`${i+1}. Recomendación`,14,ay); doc.setFont("Helvetica","normal"); doc.setFontSize(8); doc.setTextColor(51,65,85); const lines=doc.splitTextToSize(text,178); doc.text(lines,18,ay+7); ay+=12+lines.length*4;}); footer(doc,page++);
-
-    doc.addPage(); header(doc,"PLAN DE ACCIÓN PRIORIZADO"); pageTitle(doc,"5.2 Plan de acción priorizado"); let py=65; actions.forEach((a,i)=>{const c=a.p==="Alta"?brand.red:a.p==="Media"?brand.orange:brand.green; doc.setFont("Helvetica","bold"); doc.setFontSize(8.8); doc.setTextColor(c); doc.text(`${i+1}. Prioridad ${a.p}: ${a.s}`,14,py); doc.setFont("Helvetica","normal"); doc.setFontSize(8); doc.setTextColor(51,65,85); doc.text(doc.splitTextToSize(`Por qué es necesario: ${a.w}`,178),18,py+7); py+=24;}); footer(doc,page++);
-
-    doc.addPage(); header(doc,"RESUMEN EJECUTIVO"); pageTitle(doc,"6. Resumen ejecutivo"); doc.setFont("Helvetica","normal"); doc.setFontSize(9); doc.setTextColor(51,65,85); doc.text(doc.splitTextToSize([`Cliente: ${formData.nombre}.`,`Seguridad global: ${globalScore}/10.`,`Brecha mensual de jubilación: ${eur(retirementGap)}.`,`Capital objetivo: ${eur(targetCapital)}.`,`Patrimonio proyectado a los 67 años: ${eur(projectedAtRetirement)}.`,`Medida prioritaria: ${diagnostics.find(item=>item.severity==="grave")?.action ?? diagnostics[0].action}`].join(" "),178),14,60); doc.setFontSize(8.4); doc.text(doc.splitTextToSize(executiveSummary,178),14,88); footer(doc,page); doc.save(`auditoria-prevision-social-${formData.nombre.replace(/\s+/g,"-").toLowerCase()}.pdf`);
   };
 
-  const severityClass = (s: Severity) => s === "grave" ? "border-red-200 bg-red-50 text-red-700" : s === "moderada" ? "border-orange-200 bg-orange-50 text-orange-700" : "border-emerald-200 bg-emerald-50 text-emerald-700";
-  const statusBadge = (color: string) => color === "emerald" ? "bg-emerald-600" : color === "orange" ? "bg-orange-500" : "bg-red-600";
+  const updateQuestion = (field: keyof ClientData["preguntas"], value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      preguntas: { ...prev.preguntas, [field]: value }
+    }));
+  };
 
-  return <div className="min-h-screen bg-white text-slate-950"><header className="sticky top-0 z-50 bg-[#1A1A1A] text-white border-b border-white/10"><div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"><div className="flex items-center gap-4"><img src={brandLogo} alt="Logo Hilo Legal" className="h-16 w-14 object-contain"/><div><p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#C5A566]">Auditoría patrimonial</p><h1 className="text-lg font-black text-white sm:text-2xl">JOSÉ CARLOS HIDALGO</h1><p className="text-lg font-black text-white sm:text-2xl">Previsión social y brecha de jubilación</p></div></div><div className="flex flex-col gap-1 text-sm text-white/80 sm:items-end"><a className="flex items-center gap-2 hover:text-[#C5A566]" href="mailto:josecarlos@hilolegal.es"><Mail className="h-4 w-4"/> josecarlos@hilolegal.es</a><a className="flex items-center gap-2 hover:text-[#C5A566]" href="tel:647506040"><Phone className="h-4 w-4"/> 647 50 60 40</a></div></div></header><main className="mx-auto max-w-7xl px-5 py-8"><section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><Title icon={<UserRound className="h-6 w-6 text-[#C5A566]"/>} text="1. Resumen de datos del Cliente"/><div className="grid grid-cols-1 gap-4 md:grid-cols-3"><Input label="Nombre" value={formData.nombre} onChange={v=>updateField("nombre",v)}/><Input label="Teléfono" value={formData.telefono} onChange={v=>updateField("telefono",v)}/><Input label="Email" value={formData.email} onChange={v=>updateField("email",v)}/><NumberInput label="Edad" value={formData.edad} onChange={v=>updateField("edad",v)}/><NumberInput label="Años cotizados" value={formData.anosCotizados} onChange={v=>updateField("anosCotizados",v)}/><NumberInput label="Base cotización" value={formData.baseCotizacion} onChange={v=>updateField("baseCotizacion",v)}/><SelectInput label="Estado civil" value={formData.estadoCivil} options={["Soltero/a","Casado/a","Divorciado/a","Pareja de Hecho","Viudo/a"]} onChange={v=>updateField("estadoCivil",v as ClientData["estadoCivil"])}/><NumberInput label="Nº de hijos menores de 25 años" value={formData.numeroHijos} onChange={v=>updateField("numeroHijos",v)}/><NumberInput label="Salario neto mensual" value={formData.salarioNetoMensual} onChange={v=>updateField("salarioNetoMensual",v)}/><NumberInput label="Gastos mensuales" value={formData.gastosMensuales} onChange={v=>updateField("gastosMensuales",v)}/><NumberInput label="Alquiler, hipoteca y préstamos" value={formData.alquilerHipotecaPrestamos} onChange={v=>updateField("alquilerHipotecaPrestamos",v)}/><NumberInput label="Dinero en banco" value={formData.dineroBanco} onChange={v=>updateField("dineroBanco",v)}/><NumberInput label="Dinero invertido" value={formData.dineroInvertido} onChange={v=>updateField("dineroInvertido",v)}/><NumberInput label="Rentabilidad dinero invertido (%)" value={formData.rentabilidadInversion ?? 0} onChange={v=>updateField("rentabilidadInversion",v)}/><NumberInput label="Ahorro sistemático mensual" value={formData.ahorroSistematico ?? 0} onChange={v=>updateField("ahorroSistematico",v)}/><NumberInput label="Rentabilidad ahorro sistemático (%)" value={formData.rentabilidadAhorro ?? 0} onChange={v=>updateField("rentabilidadAhorro",v)}/></div></section>
+  // Goals table row computing
+  const goalRows = useMemo(() => {
+    return goals.map(goal => {
+      const { aportacionLineal, aportacionFinanciera } = calculateSavingsGoal(
+        goal.target,
+        goal.years,
+        goal.priority === "Alta" ? Number(formData.rentabilidadAhorroSistematico || 6) : 2 // lower risk for short/medium objectives
+      );
+      const isViable = savingsCapacity.sinRentas >= aportacionFinanciera;
+      return {
+        ...goal,
+        aportacionLineal,
+        aportacionFinanciera,
+        viable: isViable ? "Viable" : "Ajustado",
+        color: isViable ? "emerald" : "orange"
+      };
+    });
+  }, [goals, savingsCapacity, formData]);
 
-<section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><Title icon={<TrendingUp className="h-6 w-6 text-[#C5A566]"/>} text="Objetivos a medio y largo plazo"/><div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_180px_220px_160px]"><Input label="Objetivo personalizable" value={draftProject.name} onChange={v=>setDraftProject({...draftProject,name:v})}/><NumberInput label="Cantidad objetivo" value={draftProject.target} onChange={v=>setDraftProject({...draftProject,target:v})}/><label className="block"><span className="mb-1 block text-xs font-bold uppercase text-slate-500">Plazo: {draftProject.years} años</span><input className="w-full accent-[#C5A566]" type="range" min="1" max="20" value={draftProject.years} onChange={e=>setDraftProject({...draftProject,years:Number(e.target.value)})}/></label><button type="button" onClick={addProject} className="self-end rounded-lg bg-[#C5A566] px-4 py-2 text-sm font-black uppercase text-white hover:bg-[#A8833F]">Añadir</button></div><div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3"><Metric label="Capacidad real de ahorro" value={`${eur(capacidadAhorroReal)} / mes`}/><Metric label="Necesidad mensual objetivos" value={`${eur(totalMonthlyProjects)} / mes`}/><Metric label="Viabilidad global" value={globalProjectStatus}/></div><div className="mt-5 overflow-hidden rounded-lg border border-slate-200"><div className="grid grid-cols-12 bg-slate-100 px-4 py-3 text-xs font-black uppercase text-slate-500"><span className="col-span-4">Proyecto</span><span className="col-span-2">Importe</span><span className="col-span-2">Años</span><span className="col-span-2">Ahorro/mes</span><span className="col-span-2">Estado</span></div>{projectRows.map(project=><div key={project.id} className="grid grid-cols-12 items-center gap-2 border-t border-slate-200 px-4 py-3 text-sm"><input className="col-span-4 rounded border border-slate-200 px-2 py-1" value={project.name} onChange={e=>updateProject(project.id,{name:e.target.value})}/><input className="col-span-2 rounded border border-slate-200 px-2 py-1" type="number" value={project.target} onChange={e=>updateProject(project.id,{target:Number(e.target.value)})}/><div className="col-span-2"><input className="w-full accent-[#C5A566]" type="range" min="1" max="20" value={project.years} onChange={e=>updateProject(project.id,{years:Number(e.target.value)})}/><span className="text-xs font-bold text-slate-500">{project.years} años</span></div><span className="col-span-2 font-black text-slate-900">{eur(project.monthly)}</span><div className="col-span-2 flex items-center justify-between gap-2"><span className={`rounded px-2 py-1 text-xs font-black uppercase text-white ${statusBadge(project.color)}`}>{project.status}</span><button type="button" onClick={()=>removeProject(project.id)} className="text-xs font-bold text-slate-400 hover:text-red-600">Eliminar</button></div></div>)}</div></section>
+  const totalMonthlyGoalAhorro = goalRows.reduce((sum, g) => sum + g.aportacionFinanciera, 0);
+  const globalGoalStatus = savingsCapacity.sinRentas >= totalMonthlyGoalAhorro ? "Viable" : "Ajustado";
 
-<section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><Title icon={<FileText className="h-6 w-6 text-[#C5A566]"/>} text="Cuestionario completo de auditoría"/><div className="grid grid-cols-1 gap-4 md:grid-cols-2">{auditQuestions.map(q=><Question key={q.key} label={q.label} title={q.title} description={q.explanation} value={formData.preguntas[q.key]} onChange={v=>updateQuestion(q.key,v)}/>)}</div></section><section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><Title icon={<Shield className="h-6 w-6 text-[#C5A566]"/>} text="2. Auditoría de Previsión Social"/><div className="grid grid-cols-1 gap-4 lg:grid-cols-3">{[["Baja laboral",prestaciones.it,deficits.it],["Invalidez absoluta",prestaciones.ipa,deficits.ipa],["Invalidez profesional",prestaciones.ipt,deficits.ipt],["Viudedad",prestaciones.viudedad,deficits.viudedad],["Orfandad",prestaciones.orfandad,deficits.orfandad],["Jubilación",prestaciones.jubilacion,deficits.jubilacion]].map(([l,b,g])=><ResultCard key={String(l)} label={String(l)} benefit={Number(b)} gap={Number(g)}/>)}</div><div className="mt-6 h-80 rounded-lg border border-slate-200 bg-slate-50 p-4"><ResponsiveContainer width="100%" height="100%"><BarChart data={benefitChartData}><CartesianGrid stroke="#E2E8F0" strokeDasharray="3 3"/><XAxis dataKey="name" stroke="#475569" tick={{fontSize:11}}/><YAxis stroke="#475569" tickFormatter={v=>`${Math.round(Number(v)/1000)}k`}/><Tooltip formatter={v=>eur(Number(v))}/><Legend/><Bar dataKey="Prestacion" name="Prestación estimada" fill={brand.gold}/><Line type="monotone" dataKey="Gastos" name="Gastos mensuales requeridos" stroke={brand.red} strokeWidth={3} dot={false}/><ReferenceLine y={gastosTotales} stroke={brand.red} strokeDasharray="6 6" label={{value:"Gastos requeridos", fill:brand.red, position:"insideTopRight"}}/></BarChart></ResponsiveContainer></div></section><section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><Title icon={<TrendingUp className="h-6 w-6 text-[#C5A566]"/>} text="3. Estudio brecha de jubilación"/><div className="mb-5 rounded-lg border-2 border-[#F97316] bg-[#0F172A] p-5 text-white"><h3 className="text-lg font-black uppercase text-[#F97316]">Estudio previsor: brecha de jubilación hasta los 90 años</h3><p className="mt-3 text-sm font-semibold">Considerando una esperanza de vida de 90 años, financiando un retiro de 23 años ({retirementMonths} meses) tras jubilarse a los 67 años:</p><div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2"><p className="font-black">• Déficit mensual S.S.: {eur(deficitMensualSS)} / mes</p><p className="font-black">• Capital total previsor requerido: {eur(targetCapital)}</p><p className="font-black text-orange-300">• Años para acumular: {yearsToRetirement} años ({accumulationMonths} meses)</p><p className="font-black text-orange-300">• Esfuerzo mensual recomendado: {eur(recommendedRetirementSaving)} / mes</p></div></div><div className="grid grid-cols-1 gap-4 md:grid-cols-3"><Metric label="Brecha mensual" value={eur(retirementGap)}/><Metric label="Capital objetivo" value={eur(targetCapital)}/><Metric label="Proyección a los 67" value={eur(projectedAtRetirement)}/></div><p className="mt-5 text-sm leading-relaxed text-slate-700">Simulación de retiro sostenible con patrimonio proyectado, plan de ahorro acumulado y capital objetivo para sostener el nivel de vida entre los 67 y los 90 años. La rentabilidad del dinero invertido es del <strong>{pct(Number(formData.rentabilidadInversion ?? 0))}</strong> y la del ahorro sistemático es del <strong>{pct(Number(formData.rentabilidadAhorro ?? 0))}</strong>.</p><div className="mt-6 h-80 rounded-lg border border-slate-200 bg-slate-50 p-4"><ResponsiveContainer width="100%" height="100%"><AreaChart data={projectionData}><CartesianGrid stroke="#E2E8F0" strokeDasharray="3 3"/><XAxis dataKey="edad" stroke="#475569"/><YAxis stroke="#475569" tickFormatter={v=>`${Math.round(Number(v)/1000)}k`}/><Tooltip formatter={v=>eur(Number(v))}/><Legend/><Area dataKey="Patrimonio Total" name="Patrimonio Total Proyectado" stroke={brand.gold} fill={brand.gold} fillOpacity={0.25}/><Area dataKey="Plan de Ahorro" name="Plan de Ahorro Acumulado" stroke="#60A5FA" fill="#60A5FA" fillOpacity={0.16}/><Line dataKey="Capital Objetivo" name="Línea Capital Objetivo" stroke={brand.red} strokeDasharray="6 6" dot={false}/></AreaChart></ResponsiveContainer></div></section><section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><Title icon={<BarChart3 className="h-6 w-6 text-[#C5A566]"/>} text="4. Niveles de Seguridad y Vulnerabilidad"/><div className="grid grid-cols-1 gap-6 lg:grid-cols-[380px_1fr]"><div className="h-80 rounded-lg border border-slate-200 bg-slate-50 p-4"><ResponsiveContainer width="100%" height="100%"><RadarChart data={radarData}><PolarGrid stroke="#CBD5E1"/><PolarAngleAxis dataKey="subject" tick={{fontSize:11,fill:"#475569",fontWeight:700}}/><PolarRadiusAxis angle={30} domain={[0,100]} tick={false} axisLine={false}/><Radar name="Seguridad" dataKey="score" stroke={brand.gold} fill={brand.gold} fillOpacity={0.28} strokeWidth={2}/><Tooltip formatter={v=>`${v}%`}/></RadarChart></ResponsiveContainer></div><div className="grid grid-cols-1 gap-4 md:grid-cols-2">{[["Fondo de emergencia",scores.fondo],["Protección por baja laboral",scores.baja],["Protección familiar",scores.familia],["Acceso sanitario",scores.sanitario],["Inflación e inversión",scores.inflacion],["Protección legal",scores.legal]].map(([l,s])=><ScoreBar key={String(l)} label={String(l)} score={Number(s)}/>)}</div></div></section><section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><Title icon={<AlertTriangle className="h-6 w-6 text-[#C5A566]"/>} text="5. Diagnóstico estratégico y plan de acción"/><p className="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">La auditoría refleja una seguridad global de <strong>{globalScore}/10</strong>. El diagnóstico prioriza brechas de ingresos, reserva de liquidez, protección familiar, jubilación y blindaje legal.</p><div className="grid grid-cols-1 gap-4 lg:grid-cols-2">{diagnostics.map((d,i)=><article key={d.area} className={`rounded-lg border p-4 ${severityClass(d.severity)}`}><div className="mb-2 flex items-center justify-between gap-3"><h3 className="font-black text-slate-900">{i+1}. {d.area}</h3><span className="text-xs font-black uppercase">{d.severity}</span></div><p className="text-sm font-semibold">{d.issue}</p><p className="mt-3 text-sm text-slate-700"><strong>Plan de acción:</strong> {d.action}</p></article>)}</div><div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">{advice.map((text,i)=><article key={i} className="rounded-lg border border-slate-200 bg-slate-50 p-4"><h3 className="mb-2 text-sm font-black text-slate-900">Recomendación técnica {i+1}</h3><p className="text-sm leading-relaxed text-slate-700">{text}</p></article>)}</div></section><section className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"><Title icon={<FileText className="h-6 w-6 text-[#C5A566]"/>} text="6. Resumen ejecutivo"/><div className="grid grid-cols-1 gap-4 md:grid-cols-3"><Metric label="Seguridad global" value={`${globalScore}/10`}/><Metric label="Ahorro disponible" value={eur(ahorroDisponible)}/><Metric label="Medida prioritaria" value={diagnostics.find(d=>d.severity==="grave")?.area ?? "Mantenimiento"}/></div><article className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4"><p className="text-sm leading-relaxed text-slate-700">{executiveSummary}</p></article><div className="mt-6 space-y-3">{actions.map((a,i)=><article key={a.s} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"><div className="mb-2 flex flex-wrap items-center gap-3"><span className={`rounded px-2 py-1 text-xs font-black uppercase text-white ${a.p==="Alta"?"bg-red-600":a.p==="Media"?"bg-orange-500":"bg-emerald-600"}`}>{a.p}</span><h3 className="font-black text-slate-900">{i+1}. {a.s}</h3></div><p className="text-sm text-slate-700"><strong>Por qué es necesario:</strong> {a.w}</p></article>)}</div><button onClick={downloadPDFReport} className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#C5A566] px-5 py-4 text-sm font-black uppercase text-white transition hover:bg-[#A8833F]"><Download className="h-5 w-5"/> Descargar informe PDF</button></section></main><footer className="mt-10 bg-[#1A1A1A] px-5 py-10 text-white"><div className="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-4"><img src={brandLogo} alt="Logo Hilo Legal" className="h-16 w-14 object-contain"/><div><p className="text-lg font-black text-white sm:text-2xl">JOSÉ CARLOS HIDALGO</p><p className="text-lg font-black text-white sm:text-2xl">Previsión social y brecha de jubilación</p><p className="text-xs text-white/60">Gestión patrimonial e hipotecaria</p></div></div><div className="text-sm text-white/75"><p>josecarlos@hilolegal.es</p><p>647 50 60 40</p></div></div></footer></div>;
+  // Recharts projections
+  const projectionChartData = useMemo(() => {
+    const years = Math.max(15, 67 - formData.edad);
+    return Array.from({ length: years + 1 }, (_, i) => {
+      const currentAge = formData.edad + i;
+      const invRate = (formData.rentabilidadInversion || 5) / 100;
+      const savRate = (formData.rentabilidadAhorroSistematico || 6) / 100;
+      const annualSaving = (formData.ahorroSistematicoMensual || 150) * 12;
+
+      const savingAcc = savRate > 0 
+        ? annualSaving * ((Math.pow(1 + savRate, i) - 1) / savRate)
+        : annualSaving * i;
+      
+      const invAcc = formData.dineroInvertido * Math.pow(1 + invRate, i);
+      const rentsAcc = (formData.destinoRentasInmobiliarias === "reinversion" || formData.destinoRentasInmobiliarias === "mixto")
+        ? formData.rentasInmobiliariasMensualesNetas * 12 * i
+        : 0;
+
+      const total = formData.dineroBanco + invAcc + savingAcc + rentsAcc;
+      return {
+        edad: currentAge,
+        "Patrimonio Financiero": Math.round(total),
+        "Ahorro Acumulado": Math.round(savingAcc),
+        "Capital Objetivo": Math.round(retirementGap.capitalObjetivo)
+      };
+    });
+  }, [formData, retirementGap]);
+
+  // Quality assessment (Bloque Calidad del Diagnóstico)
+  const dataQuality = useMemo(() => {
+    const fields = [
+      formData.nombre, formData.telefono, formData.email, formData.edad, formData.anosCotizadosActuales,
+      formData.baseCotizacionActual, formData.salarioNetoMensual, formData.gastoMensualPersonal,
+      formData.viviendaPrestamosMensual, formData.dineroBanco, formData.dineroInvertido,
+      formData.rentasInmobiliariasMensualesNetas, formData.deudaPendienteTotal, formData.capitalSeguroVidaExistente
+    ];
+    const filledCount = fields.filter(f => f !== null && f !== 0 && f !== "").length;
+    const completeness = Math.round((filledCount / fields.length) * 100);
+
+    const pendingList: string[] = [];
+    if (formData.basesCotizacionHistoricasDisponibles === "Pendiente") pendingList.push("Bases históricas");
+    if (formData.convenioComplementaBaja === "Pendiente") pendingList.push("Convenio de baja");
+    if (formData.empresaComplementaBaja === "Pendiente") pendingList.push("Mejora de empresa");
+    if (formData.destinoRentasInmobiliarias === "desconocido") pendingList.push("Destino de rentas");
+    if (formData.beneficiariosRevisados === "Pendiente") pendingList.push("Revisión de beneficiarios");
+
+    let reliability: "Alta" | "Media" | "Baja" = "Alta";
+    if (completeness < 60 || pendingList.length > 3) {
+      reliability = "Baja";
+    } else if (completeness < 85 || pendingList.length > 0) {
+      reliability = "Media";
+    }
+
+    return { completeness, pendingList, reliability };
+  }, [formData]);
+
+  const addGoal = () => {
+    setGoals(prev => [...prev, { id: Date.now(), ...draftGoal }]);
+  };
+
+  const removeGoal = (id: number) => {
+    setGoals(prev => prev.filter(g => g.id !== id));
+  };
+
+  // Recharts Radar data
+  const radarData = [
+    { subject: "Liquidez", score: scores.fondo * 10 },
+    { subject: "Baja Laboral", score: scores.baja * 10 },
+    { subject: "Incapacidad", score: scores.incapacidad * 10 },
+    { subject: "Familias", score: scores.familia * 10 },
+    { subject: "Deuda", score: scores.deuda * 10 },
+    { subject: "Jubilación", score: scores.jubilacion * 10 },
+    { subject: "Patrimonio", score: scores.inflacion * 10 },
+    { subject: "Sucesorio", score: scores.legal * 10 }
+  ];
+
+  // Recharts Benefit vs Expenses data
+  const benefitBarData = [
+    { name: "Baja temporal", Prestacion: Math.round(temporaryDisability.tramo60Monto), Gastos: Math.round(expenses.total) },
+    { name: "Inv. Profesional (IPT)", Prestacion: Math.round(permanentDisability.iptMonto), Gastos: Math.round(expenses.total) },
+    { name: "Inv. Absoluta (IPA)", Prestacion: Math.round(permanentDisability.ipaMonto), Gastos: Math.round(expenses.total) },
+    { name: "Viudedad", Prestacion: Math.round(survivorBenefits.viudedadMonto), Gastos: Math.round(expenses.total) },
+    { name: "Orfandad", Prestacion: Math.round(survivorBenefits.orfandadMonto), Gastos: Math.round(expenses.total) },
+    { name: "Jubilación", Prestacion: Math.round(centralScenario.pensionEstimada), Gastos: Math.round(expenses.total) }
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+      {/* 1. BRAND HEADER */}
+      <header className="sticky top-0 z-50 bg-[#1A1A1A] text-white border-b border-white/10 shadow-md">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <img src={brandLogo} alt="Logo" className="h-14 w-12 object-contain" />
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#C5A566]">Auditoría Patrimonial Premium</p>
+              <h1 className="text-xl font-black text-white sm:text-2xl">JOSÉ CARLOS HIDALGO</h1>
+              <p className="text-xs text-white/70">Consultoría Estratégica, Previsión Social e Hipotecaria</p>
+            </div>
+          </div>
+          <div className="flex flex-col gap-1 text-sm text-white/80 sm:items-end">
+            <a className="flex items-center gap-2 hover:text-[#C5A566] transition-colors" href="mailto:josecarlos@hilolegal.es">
+              <Mail className="h-4 w-4 text-[#C5A566]" /> josecarlos@hilolegal.es
+            </a>
+            <a className="flex items-center gap-2 hover:text-[#C5A566] transition-colors" href="tel:647506040">
+              <Phone className="h-4 w-4 text-[#C5A566]" /> 647 50 60 40
+            </a>
+          </div>
+        </div>
+      </header>
+
+      {/* MAIN CONTAINER */}
+      <main className="mx-auto max-w-7xl px-4 py-8 lg:px-6 space-y-8">
+        
+        {/* FASE 5.1: BLOQUE INICIAL DE CALIDAD DEL DIAGNÓSTICO */}
+        <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center gap-3 border-b border-slate-100 pb-4 mb-4">
+            <Shield className="h-6 w-6 text-[#C5A566]" />
+            <div>
+              <h2 className="text-lg font-black text-slate-900">Control de Calidad del Diagnóstico Financiero</h2>
+              <p className="text-xs text-slate-500">Garantía de rigor y prudencia técnica del modelo de datos</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* Gauge */}
+            <div className="bg-slate-50 p-4 rounded-lg flex flex-col justify-center items-center text-center">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Datos Suficientes</span>
+              <span className="text-4xl font-black text-slate-900 mt-2">{dataQuality.completeness}%</span>
+              <div className="w-full bg-slate-200 h-2 rounded-full mt-3 overflow-hidden">
+                <div className="bg-[#C5A566] h-2 rounded-full" style={{ width: `${dataQuality.completeness}%` }} />
+              </div>
+            </div>
+
+            {/* Reliability */}
+            <div className="bg-slate-50 p-4 rounded-lg flex flex-col justify-center items-center text-center">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fiabilidad del Informe</span>
+              <span className={`text-xl font-black mt-2 px-3 py-1 rounded ${
+                dataQuality.reliability === "Alta" ? "bg-emerald-100 text-emerald-800" :
+                dataQuality.reliability === "Media" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"
+              }`}>{dataQuality.reliability}</span>
+              <p className="text-xs text-slate-500 mt-3 leading-relaxed">
+                {dataQuality.reliability === "Alta" ? "Cálculos de alta precisión" : "Requiere validar algunas variables críticas"}
+              </p>
+            </div>
+
+            {/* Pending validations */}
+            <div className="bg-slate-50 p-4 rounded-lg md:col-span-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Datos pendientes de verificar por el asesor:</span>
+              {dataQuality.pendingList.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {dataQuality.pendingList.map(item => (
+                    <li key={item} className="text-xs flex items-center gap-2 text-slate-700 font-medium">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                      {item} <span className="text-[10px] text-amber-600 bg-amber-50 px-1 rounded">Pendiente</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-emerald-600 font-bold flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" /> ¡Todos los datos clave han sido verificados!
+                </p>
+              )}
+              <p className="text-[10px] text-slate-400 mt-3 leading-relaxed">
+                *Riesgos no verificables todavía: Se asume continuidad de base sin lagunas de cotización reales.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* TWO-COLUMN GRID FOR TARJETAS DIAGNÓSTICO & FORMS */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* LEFT: 7 TARGETAS DE DIAGNÓSTICO (FASE 5.6) */}
+          <section className="lg:col-span-7 space-y-6">
+            <div className="flex items-center gap-3">
+              <BarChart3 className="h-6 w-6 text-[#C5A566]" />
+              <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Lectura Profesional del Diagnóstico</h2>
+            </div>
+
+            <div className="space-y-4">
+              {/* Tarjeta 1: Protección de Ingresos */}
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm uppercase text-[#C5A566]">1. Protección de Ingresos (Baja laboral)</h3>
+                    <p className="text-xs text-slate-500">Incapacidad Temporal en contingencias comunes</p>
+                  </div>
+                  <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
+                    scores.baja >= 8 ? "bg-emerald-50 text-emerald-700" : scores.baja >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                  }`}>Puntuación: {scores.baja}/10</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
+                  <div>
+                    <span className="text-slate-400 block font-medium">Prestación 60% / 75%</span>
+                    <strong className="text-slate-800">{formatCurrency(temporaryDisability.tramo60Monto)} / {formatCurrency(temporaryDisability.tramo75Monto)}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-medium">Impacto Económico</span>
+                    <strong className="text-red-600">Déficit inicial de {formatCurrency(temporaryDisability.tramo60Brecha)}/mes</strong>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  <strong>Recomendación:</strong> Cobertura suficiente solo en el tramo del 75%. Se recomienda subsidio privado de baja laboral para complementar los primeros 20 días.
+                </p>
+                <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
+                  <span>Prioridad: <strong className="text-red-500 font-bold uppercase">Alta</strong></span>
+                  <span>Origen: SS España</span>
+                </div>
+              </div>
+
+              {/* Tarjeta 2: Protección Familiar */}
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm uppercase text-[#C5A566]">2. Protección Familiar (Sucesos)</h3>
+                    <p className="text-xs text-slate-500">Escenario conjunto de viudedad y orfandad</p>
+                  </div>
+                  <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
+                    scores.familia >= 8 ? "bg-emerald-50 text-emerald-700" : scores.familia >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                  }`}>Puntuación: {scores.familia}/10</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
+                  <div>
+                    <span className="text-slate-400 block font-medium">Pensión Familiar Conjunta</span>
+                    <strong className="text-slate-800">{formatCurrency(survivorBenefits.conjuntoMonto)} / mes</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-medium">Déficit de Protección</span>
+                    <strong className={familyNeed.deficitDeProteccion > 0 ? "text-red-600" : "text-emerald-600"}>
+                      {formatCurrency(familyNeed.deficitDeProteccion)} objetivo
+                    </strong>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  <strong>Recomendación:</strong> {survivorBenefits.conjuntoBrechaOSuperavit >= 0 
+                    ? "Subsidio mensual cubierto por escenario familiar conjunto. Ajustar seguros para cubrir deudas." 
+                    : `Existe un déficit familiar. Se recomienda capital de vida de ${formatCurrency(familyNeed.deficitDeProteccion)}.`}
+                </p>
+                <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
+                  <span>Prioridad: <strong className="text-[#F97316] font-bold uppercase">Media-Alta</strong></span>
+                  <span>Análisis: Viudedad + Orfandad (Tope 100%)</span>
+                </div>
+              </div>
+
+              {/* Tarjeta 3: Liquidez */}
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm uppercase text-[#C5A566]">3. Reserva de Liquidez</h3>
+                    <p className="text-xs text-slate-500">Disponibilidad líquida frente a emergencias</p>
+                  </div>
+                  <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
+                    scores.fondo >= 8 ? "bg-emerald-50 text-emerald-700" : scores.fondo >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                  }`}>Puntuación: {scores.fondo}/10</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
+                  <div>
+                    <span className="text-slate-400 block font-medium">Fondo de Emergencia</span>
+                    <strong className="text-slate-800">{formatCurrency(liquidity.dineroBanco)}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-medium">Meses de Gastos Cubiertos</span>
+                    <strong className="text-slate-800">{liquidity.mesesCubiertos.toFixed(1)} meses</strong>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  <strong>Recomendación:</strong> {liquidity.mesesCubiertos < 6 
+                    ? "Construir de forma prioritaria una reserva equivalente a 6-9 meses de gasto fijo." 
+                    : "Excelente colchón de seguridad. Vigile el exceso de liquidez no invertido."}
+                </p>
+                <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
+                  <span>Prioridad: <strong className="text-slate-500 font-bold uppercase">Baja</strong></span>
+                  <span>Nivel: {liquidity.nivel.toUpperCase()}</span>
+                </div>
+              </div>
+
+              {/* Tarjeta 4: Deuda */}
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm uppercase text-[#C5A566]">4. Apalancamiento y Deuda</h3>
+                    <p className="text-xs text-slate-500">Ratios de endeudamiento sobre salario e ingresos</p>
+                  </div>
+                  <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
+                    scores.deuda >= 8 ? "bg-emerald-50 text-emerald-700" : scores.deuda >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                  }`}>Puntuación: {scores.deuda}/10</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
+                  <div>
+                    <span className="text-slate-400 block font-medium">Cuota mensual / Deuda pendiente</span>
+                    <strong className="text-slate-800">{formatCurrency(debt.deudaMensualTotal)} / {formatCurrency(formData.deudaPendienteTotal)}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-medium">Ratio sobre salario ordinario</span>
+                    <strong className="text-slate-800">{formatPercent(debt.ratioSobreSalario * 100)}</strong>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  <strong>Recomendación:</strong> {debt.ratioSobreSalario > 0.35 
+                    ? "Alerta de endeudamiento alto. Considere amortizar cuota antes de contratar nuevos activos." 
+                    : "Ratio saludable por debajo del límite prudente del 35%."}
+                </p>
+                <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
+                  <span>Prioridad: <strong className="text-slate-500 font-bold uppercase">Baja</strong></span>
+                  <span>Riesgo: {debt.riesgo.toUpperCase()}</span>
+                </div>
+              </div>
+
+              {/* Tarjeta 5: Jubilación */}
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm uppercase text-[#C5A566]">5. Planificación de Jubilación</h3>
+                    <p className="text-xs text-slate-500">Pensiones públicas y brecha de retiro</p>
+                  </div>
+                  <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
+                    scores.jubilacion >= 8 ? "bg-emerald-50 text-emerald-700" : scores.jubilacion >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                  }`}>Puntuación: {scores.jubilacion}/10</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
+                  <div>
+                    <span className="text-slate-400 block font-medium">Pensión Central Estimada</span>
+                    <strong className="text-slate-800">{formatCurrency(centralScenario.pensionEstimada)} / mes</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-medium">Brecha Mensual de Retiro</span>
+                    <strong className="text-slate-800">{formatCurrency(retirementGap.brechaMensual)} / mes</strong>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  <strong>Recomendación:</strong> Se requiere un capital previsor de {formatCurrency(retirementGap.capitalObjetivo)} para compensar la brecha mensual estimada.
+                </p>
+                <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
+                  <span>Prioridad: <strong className="text-[#F97316] font-bold uppercase">Media</strong></span>
+                  <span>Tasa reguladora: {formatPercent(centralScenario.porcentajeEstimado)}</span>
+                </div>
+              </div>
+
+              {/* Tarjeta 6: Patrimonio */}
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm uppercase text-[#C5A566]">6. Patrimonio y Rentas Inmobiliarias</h3>
+                    <p className="text-xs text-slate-500">Crecimiento de capital contra la inflación</p>
+                  </div>
+                  <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
+                    scores.inflacion >= 8 ? "bg-emerald-50 text-emerald-700" : scores.inflacion >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                  }`}>Puntuación: {scores.inflacion}/10</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
+                  <div>
+                    <span className="text-slate-400 block font-medium">Patrimonio Proyectado 67 años</span>
+                    <strong className="text-slate-800">{formatCurrency(metrics.estate.projectedTotal)}</strong>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-medium">Flujo Renta Inmobiliaria Neto</span>
+                    <strong className="text-slate-800">{formatCurrency(formData.rentasInmobiliariasMensualesNetas)} / mes</strong>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  <strong>Recomendación:</strong> {formData.destinoRentasInmobiliarias === "desconocido" 
+                    ? "Alerta: Destino de rentas inmobiliarias sin verificar. No se consideran rentas en proyección por prudencia."
+                    : "Patrimonio bien encaminado gracias al flujo inmobiliario e interés compuesto de planes de ahorro."}
+                </p>
+                <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
+                  <span>Prioridad: <strong className="text-slate-500 font-bold uppercase">Baja</strong></span>
+                  <span>Destino de Rentas: {formData.destinoRentasInmobiliarias.toUpperCase()}</span>
+                </div>
+              </div>
+
+              {/* Tarjeta 7: Legal */}
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm uppercase text-[#C5A566]">7. Orden Legal y Sucesorio</h3>
+                    <p className="text-xs text-slate-500">Blindaje legal familiar e instrumental patrimonial</p>
+                  </div>
+                  <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
+                    scores.legal >= 8 ? "bg-emerald-50 text-emerald-700" : scores.legal >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                  }`}>Puntuación: {scores.legal}/10</span>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  <strong>Recomendación:</strong> Falta testamento, inventario patrimonial, poder preventivo y protocolo familiar de contingencia. Se recomienda ordenar notarialmente estas actas urgentemente.
+                </p>
+                <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
+                  <span>Prioridad: <strong className="text-[#F97316] font-bold uppercase">Media</strong></span>
+                  <span>Sucesorio: Insuficiente</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* RIGHT: TABS CUESTIONARIO CON MICROTEXTOS DIDÁCTICOS (FASE 5.2 & 5.3 & 5.4) */}
+          <section className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <FileText className="h-5 w-5 text-[#C5A566]" />
+              <h2 className="text-md font-black text-slate-900 uppercase">Cuestionario Profesional Auditado</h2>
+            </div>
+
+            {/* Tab navigation */}
+            <div className="flex flex-wrap gap-1.5 bg-slate-100 p-1.5 rounded-lg text-xs font-bold">
+              <button onClick={() => setActiveTab("personal")} className={`px-2.5 py-1.5 rounded-md transition ${activeTab === "personal" ? "bg-[#C5A566] text-white" : "text-slate-600 hover:bg-slate-200"}`}>Personal</button>
+              <button onClick={() => setActiveTab("economico")} className={`px-2.5 py-1.5 rounded-md transition ${activeTab === "economico" ? "bg-[#C5A566] text-white" : "text-slate-600 hover:bg-slate-200"}`}>Economía</button>
+              <button onClick={() => setActiveTab("deuda")} className={`px-2.5 py-1.5 rounded-md transition ${activeTab === "deuda" ? "bg-[#C5A566] text-white" : "text-slate-600 hover:bg-slate-200"}`}>Deuda</button>
+              <button onClick={() => setActiveTab("seguridad")} className={`px-2.5 py-1.5 rounded-md transition ${activeTab === "seguridad" ? "bg-[#C5A566] text-white" : "text-slate-600 hover:bg-slate-200"}`}>Seguridad</button>
+              <button onClick={() => setActiveTab("patrimonio")} className={`px-2.5 py-1.5 rounded-md transition ${activeTab === "patrimonio" ? "bg-[#C5A566] text-white" : "text-slate-600 hover:bg-slate-200"}`}>Patrimonio</button>
+              <button onClick={() => setActiveTab("legal")} className={`px-2.5 py-1.5 rounded-md transition ${activeTab === "legal" ? "bg-[#C5A566] text-white" : "text-slate-600 hover:bg-slate-200"}`}>Legal</button>
+            </div>
+
+            <div className="space-y-4">
+              
+              {/* TAB 1: PERSONAL & FAMILIAR */}
+              {activeTab === "personal" && (
+                <div className="space-y-4">
+                  <div className="p-3 bg-[#C5A566]/10 text-slate-700 text-xs rounded border border-[#C5A566]/20">
+                    <p className="font-bold text-[#A8833F]">¿Por qué preguntamos esto?</p>
+                    <p className="mt-1">La edad, estado civil y número de hijos definen el tramo impositivo, los derechos automáticos a pensión de viudedad/orfandad y la necesidad de capital familiar garantizado.</p>
+                  </div>
+                  <Input label="Nombre del Cliente" value={formData.nombre} onChange={v => updateField("nombre", v)} />
+                  <Input label="Teléfono" value={formData.telefono} onChange={v => updateField("telefono", v)} />
+                  <Input label="Email" value={formData.email} onChange={v => updateField("email", v)} />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <NumberInput label="Edad Actual" value={formData.edad} onChange={v => updateField("edad", v)} />
+                    <SelectInput 
+                      label="Estado Civil" 
+                      value={formData.estadoCivil} 
+                      options={["Soltero/a","Casado/a","Divorciado/a","Pareja de Hecho","Viudo/a"]} 
+                      onChange={v => updateField("estadoCivil", v)} 
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <NumberInput label="Hijos menores de 25" value={formData.hijosMenores25} onChange={v => updateField("hijosMenores25", v)} />
+                    <Input label="Edades de Hijos" value={formData.edadHijos} onChange={v => updateField("edadHijos", v)} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <SelectInput 
+                      label="Cónyuge con ingresos" 
+                      value={formData.conyugeConIngresos} 
+                      options={["Si", "No", "Pendiente"]} 
+                      onChange={v => updateField("conyugeConIngresos", v)} 
+                    />
+                    <NumberInput label="Ingresos del Cónyuge" value={formData.ingresosConyuge} onChange={v => updateField("ingresosConyuge", v)} />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: ECONOMICOS */}
+              {activeTab === "economico" && (
+                <div className="space-y-4">
+                  <div className="p-3 bg-[#C5A566]/10 text-slate-700 text-xs rounded border border-[#C5A566]/20">
+                    <p className="font-bold text-[#A8833F]">¿Cómo afecta al diagnóstico?</p>
+                    <p className="mt-1">Define la capacidad neta de ahorro fáctica de la unidad familiar. Si el gasto real es superior al ingreso base, existe riesgo inminente de descapitalización.</p>
+                  </div>
+                  <NumberInput label="Salario Neto Mensual (€)" value={formData.salarioNetoMensual} onChange={v => updateField("salarioNetoMensual", v)} />
+                  <NumberInput label="Otros Ingresos Netos (€)" value={formData.otrosIngresosNetos} onChange={v => updateField("otrosIngresosNetos", v)} />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <NumberInput label="Gasto Mensual Personal (€)" value={formData.gastoMensualPersonal} onChange={v => updateField("gastoMensualPersonal", v)} />
+                    <NumberInput label="Alquiler o Cuota Hipoteca (€)" value={formData.viviendaPrestamosMensual} onChange={v => updateField("viviendaPrestamosMensual", v)} />
+                  </div>
+
+                  <div className="bg-slate-50 p-3 rounded text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Gastos Mensuales Totales:</span>
+                      <strong className="text-slate-800">{formatCurrency(expenses.total)}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Capacidad Ahorro (Sin Rentas):</span>
+                      <strong className="text-emerald-700">{formatCurrency(savingsCapacity.sinRentas)} / mes</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: DEUDA */}
+              {activeTab === "deuda" && (
+                <div className="space-y-4">
+                  <div className="p-3 bg-[#C5A566]/10 text-slate-700 text-xs rounded border border-[#C5A566]/20">
+                    <p className="font-bold text-[#A8833F]">¿Qué ocurre si falta este dato?</p>
+                    <p className="mt-1">Si falta la deuda pendiente, el cálculo del "Capital Familiar Objetivo" de protección de fallecimiento aparecerá como pendiente de validar, subestimando la necesidad de vida.</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2">
+                    <NumberInput label="Hipoteca (€)" value={formData.cuotaHipoteca} onChange={v => updateField("cuotaHipoteca", v)} />
+                    <NumberInput label="Préstamos (€)" value={formData.cuotaPrestamos} onChange={v => updateField("cuotaPrestamos", v)} />
+                    <NumberInput label="Tarjetas (€)" value={formData.cuotaTarjetas} onChange={v => updateField("cuotaTarjetas", v)} />
+                  </div>
+
+                  <NumberInput label="Deuda Pendiente Total (€)" value={formData.deudaPendienteTotal} onChange={v => updateField("deudaPendienteTotal", v)} />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <SelectInput 
+                      label="¿Seguro de Vida Vinculado?" 
+                      value={formData.seguroVidaVinculado} 
+                      options={["Si", "No", "Pendiente"]} 
+                      onChange={v => updateField("seguroVidaVinculado", v)} 
+                    />
+                    <NumberInput label="Capital Asegurado Existente (€)" value={formData.capitalSeguroVidaExistente} onChange={v => updateField("capitalSeguroVidaExistente", v)} />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: PREVISIÓN SOCIAL */}
+              {activeTab === "seguridad" && (
+                <div className="space-y-4">
+                  <div className="p-3 bg-[#C5A566]/10 text-slate-700 text-xs rounded border border-[#C5A566]/20">
+                    <p className="font-bold text-[#A8833F]">Rigor Técnico de Prestaciones</p>
+                    <p className="mt-1">La Seguridad Social de España calcula IT y Jubilación basándose en bases reguladoras reales, cotizaciones e hipótesis que requieren revisión pormenorizada.</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <SelectInput 
+                      label="Régimen S.S." 
+                      value={formData.regimenSeguridadSocial} 
+                      options={["General", "RETA (Autónomos)", "Otros"]} 
+                      onChange={v => updateField("regimenSeguridadSocial", v)} 
+                    />
+                    <NumberInput label="Base de Cotización (€)" value={formData.baseCotizacionActual} onChange={v => updateField("baseCotizacionActual", v)} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <NumberInput label="Años Cotizados" value={formData.anosCotizadosActuales} onChange={v => updateField("anosCotizadosActuales", v)} />
+                    <SelectInput 
+                      label="Bases Históricas" 
+                      value={formData.basesCotizacionHistoricasDisponibles} 
+                      options={["Si", "No", "Pendiente"]} 
+                      onChange={v => updateField("basesCotizacionHistoricasDisponibles", v)} 
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <SelectInput 
+                      label="Convenio IT" 
+                      value={formData.convenioComplementaBaja} 
+                      options={["Si", "No", "Pendiente"]} 
+                      onChange={v => updateField("convenioComplementaBaja", v)} 
+                    />
+                    <SelectInput 
+                      label="Mejora de Empresa" 
+                      value={formData.empresaComplementaBaja} 
+                      options={["Si", "No", "Pendiente"]} 
+                      onChange={v => updateField("empresaComplementaBaja", v)} 
+                    />
+                    <SelectInput 
+                      label="Seguro Privado" 
+                      value={formData.seguroPrivadoBaja} 
+                      options={["Si", "No", "Pendiente"]} 
+                      onChange={v => updateField("seguroPrivadoBaja", v)} 
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: PATRIMONIO E INVERSION */}
+              {activeTab === "patrimonio" && (
+                <div className="space-y-4">
+                  <div className="p-3 bg-[#C5A566]/10 text-slate-700 text-xs rounded border border-[#C5A566]/20">
+                    <p className="font-bold text-[#A8833F]">Análisis Inmobiliario Prudente</p>
+                    <p className="mt-1">Si el destino de las rentas inmobiliarias es desconocido, por prudencia, no se acumulan como patrimonio proyectado de jubilación, tratándolo únicamente como flujo pasivo potencial.</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <NumberInput label="Dinero en Banco (€)" value={formData.dineroBanco} onChange={v => updateField("dineroBanco", v)} />
+                    <NumberInput label="Dinero Invertido (€)" value={formData.dineroInvertido} onChange={v => updateField("dineroInvertido", v)} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <NumberInput label="Rentabilidad Inversión (%)" value={formData.rentabilidadInversion ?? 0} onChange={v => updateField("rentabilidadInversion", v)} />
+                    <NumberInput label="Ahorro Sistemático (€)" value={formData.ahorroSistematicoMensual} onChange={v => updateField("ahorroSistematicoMensual", v)} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <NumberInput label="Valor Inmuebles (€)" value={formData.valorInmuebles} onChange={v => updateField("valorInmuebles", v)} />
+                    <NumberInput label="Renta Inmueble Bruta (€)" value={formData.rentasInmobiliariasMensualesBrutas} onChange={v => updateField("rentasInmobiliariasMensualesBrutas", v)} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <NumberInput label="Renta Inmueble Neta (€)" value={formData.rentasInmobiliariasMensualesNetas} onChange={v => updateField("rentasInmobiliariasMensualesNetas", v)} />
+                    <SelectInput 
+                      label="Destino de Rentas" 
+                      value={formData.destinoRentasInmobiliarias} 
+                      options={["consumo", "reinversion", "mixto", "desconocido"]} 
+                      onChange={v => updateField("destinoRentasInmobiliarias", v)} 
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 6: LEGAL Y SUCESORIO */}
+              {activeTab === "legal" && (
+                <div className="space-y-4">
+                  <div className="p-3 bg-[#C5A566]/10 text-slate-700 text-xs rounded border border-[#C5A566]/20">
+                    <p className="font-bold text-[#A8833F]">El valor de la Sucesión</p>
+                    <p className="mt-1">Un plan financiero sin testamento o protocolo documental pierde eficacia ante situaciones sobrevenidas, forzando congelaciones de cuentas corrientes y gastos imprevistos.</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <SelectInput 
+                      label="¿Tiene Testamento?" 
+                      value={formData.tieneTestamento} 
+                      options={["Si", "No", "Pendiente"]} 
+                      onChange={v => updateField("tieneTestamento", v)} 
+                    />
+                    <SelectInput 
+                      label="¿Poder Preventivo?" 
+                      value={formData.tienePoderPreventivo} 
+                      options={["Si", "No", "Pendiente"]} 
+                      onChange={v => updateField("tienePoderPreventivo", v)} 
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <SelectInput 
+                      label="¿Inventario Patrimonial?" 
+                      value={formData.tieneInventarioPatrimonial} 
+                      options={["Si", "No", "Pendiente"]} 
+                      onChange={v => updateField("tieneInventarioPatrimonial", v)} 
+                    />
+                    <SelectInput 
+                      label="¿Familia conoce claves/pólizas?" 
+                      value={formData.familiaConoceDocumentacion} 
+                      options={["Si", "No", "Pendiente"]} 
+                      onChange={v => updateField("familiaConoceDocumentacion", v)} 
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <SelectInput 
+                      label="¿Beneficiarios Revisados?" 
+                      value={formData.beneficiariosRevisados} 
+                      options={["Si", "No", "Pendiente"]} 
+                      onChange={v => updateField("beneficiariosRevisados", v)} 
+                    />
+                    <SelectInput 
+                      label="¿Protocolo Emergencia?" 
+                      value={formData.protocoloEmergenciaFamiliar} 
+                      options={["Si", "No", "Pendiente"]} 
+                      onChange={v => updateField("protocoloEmergenciaFamiliar", v)} 
+                    />
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </section>
+
+        </div>
+
+        {/* FASE 5.5: RESUMEN PREVIO ANTES DE DESCARGAR EL INFORME PREMIUM */}
+        <section className="bg-[#1A1A1A] text-white border border-slate-800 rounded-xl p-6 shadow-lg">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            
+            <div className="lg:col-span-8 space-y-4">
+              <div className="flex items-center gap-3">
+                <Shield className="h-7 w-7 text-[#C5A566]" />
+                <div>
+                  <h2 className="text-xl font-black uppercase tracking-wide">Previsualización de la Auditoría Patrimonial</h2>
+                  <p className="text-xs text-slate-400">Puntajes, prioridades del plan y estado general del cliente</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3">
+                <div className="border border-white/10 p-3 rounded bg-white/5">
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Seguridad Global</span>
+                  <strong className="text-[#C5A566] text-xl font-black">{scores.globalScore}/10</strong>
+                </div>
+                <div className="border border-white/10 p-3 rounded bg-white/5">
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Ahorro Mensual</span>
+                  <strong className="text-emerald-400 text-sm font-black">{formatCurrency(savingsCapacity.conRentasValidadas)}</strong>
+                </div>
+                <div className="border border-white/10 p-3 rounded bg-white/5">
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Déficit Jubilación</span>
+                  <strong className="text-slate-200 text-sm font-black">{formatCurrency(retirementGap.brechaMensual)}/mes</strong>
+                </div>
+                <div className="border border-white/10 p-3 rounded bg-white/5">
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Reserva de Emergencia</span>
+                  <strong className="text-slate-200 text-sm font-black">{formatCurrency(liquidity.dineroBanco)}</strong>
+                </div>
+              </div>
+
+              {/* Warning Messages */}
+              <div className="space-y-2 pt-2">
+                <span className="text-[10px] uppercase font-black text-[#C5A566] tracking-wider block">Validaciones de Consistencia Técnicas:</span>
+                <div className="max-h-32 overflow-y-auto space-y-1 bg-black/30 p-3 rounded border border-white/5">
+                  {warnings.length > 0 ? (
+                    warnings.map((w, idx) => (
+                      <p key={idx} className="text-xs flex items-start gap-2 leading-relaxed text-slate-300">
+                        <AlertTriangle className={`h-3.5 w-3.5 shrink-0 mt-0.5 ${
+                          w.type === "critica" ? "text-red-500" : w.type === "importante" ? "text-amber-500" : "text-blue-400"
+                        }`} />
+                        <span>[{w.type.toUpperCase()}] {w.text}</span>
+                      </p>
+                    ))
+                  ) : (
+                    <p className="text-xs text-emerald-400">Cálculos perfectamente validados y sin contradicciones lógicas.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* DOWNLOAD BLOCK */}
+            <div className="lg:col-span-4 bg-white/5 border border-white/10 rounded-lg p-5 flex flex-col justify-center text-center space-y-4">
+              <div>
+                <span className="text-[#C5A566] text-[10px] font-black uppercase tracking-widest block">Informe de Auditoría Completa</span>
+                <h3 className="text-md font-black text-white mt-1">Descarga del Documento Certificado</h3>
+                <p className="text-xs text-slate-400 mt-2">PDF de diseño premium con escenarios macroeconómicos, orden sucesorio y diagnóstico formal del asesor.</p>
+              </div>
+
+              {/* Keep existing button exact text for backward compatible handlers if any */}
+              <button 
+                id="download-professional-pdf"
+                className="w-full flex items-center justify-center gap-2 rounded bg-[#C5A566] py-3.5 text-xs font-black uppercase text-white tracking-wider hover:bg-[#A8833F] transition-colors shadow-md"
+              >
+                <Download className="h-4 w-4" /> Descargar informe PDF
+              </button>
+            </div>
+
+          </div>
+        </section>
+
+        {/* GOALS SECTION (FASE 9: ESFUERZO MENSUAL Y OBJETIVOS DE AHORRO) */}
+        <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+          <div className="flex items-center gap-3">
+            <TrendingUp className="h-6 w-6 text-[#C5A566]" />
+            <h2 className="text-lg font-black text-slate-900">Objetivos y Proyectos de Capitalización</h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_200px_160px_160px_auto] items-end bg-slate-50 p-4 rounded-lg border border-slate-100">
+            <Input label="Proyecto / Objetivo de Ahorro" value={draftGoal.name} onChange={v => setDraftGoal(prev => ({ ...prev, name: v }))} />
+            <NumberInput label="Capital Necesario (€)" value={draftGoal.target} onChange={v => setDraftGoal(prev => ({ ...prev, target: v }))} />
+            <NumberInput label="Plazo (Años)" value={draftGoal.years} onChange={v => setDraftGoal(prev => ({ ...prev, years: v }))} />
+            <SelectInput 
+              label="Prioridad" 
+              value={draftGoal.priority} 
+              options={["Alta", "Media", "Baja"]} 
+              onChange={v => setDraftGoal(prev => ({ ...prev, priority: v as any }))} 
+            />
+            <button onClick={addGoal} className="w-full bg-[#C5A566] text-white px-5 py-2.5 rounded font-bold uppercase text-xs hover:bg-[#A8833F]">Añadir</button>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <table className="w-full border-collapse text-left text-xs">
+              <thead className="bg-slate-100 text-slate-600 uppercase font-black tracking-wider">
+                <tr>
+                  <th className="px-4 py-3">Proyecto</th>
+                  <th className="px-4 py-3 text-right">Importe</th>
+                  <th className="px-4 py-3 text-center">Plazo</th>
+                  <th className="px-4 py-3 text-right">Aportación Lineal (Sin Rentabilidad)</th>
+                  <th className="px-4 py-3 text-right">Aportación Financiera (Con Rentabilidad)</th>
+                  <th className="px-4 py-3 text-center">Estado</th>
+                  <th className="px-4 py-3 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                {goalRows.map(goal => (
+                  <tr key={goal.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 font-bold text-slate-900">{goal.name}</td>
+                    <td className="px-4 py-3 text-right font-bold">{formatCurrency(goal.target)}</td>
+                    <td className="px-4 py-3 text-center">{goal.years} años</td>
+                    <td className="px-4 py-3 text-right text-slate-500">{formatCurrency(goal.aportacionLineal)}/mes</td>
+                    <td className="px-4 py-3 text-right text-emerald-700 font-bold">{formatCurrency(goal.aportacionFinanciera)}/mes</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                        goal.viable === "Viable" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                      }`}>{goal.viable}</span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button onClick={() => removeGoal(goal.id)} className="text-red-500 hover:underline">Eliminar</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
+            <Metric label="Capacidad Ahorro Real" value={`${formatCurrency(savingsCapacity.sinRentas)} / mes`} />
+            <Metric label="Esfuerzo Mensual Financiero" value={`${formatCurrency(totalMonthlyGoalAhorro)} / mes`} />
+            <Metric label="Estado de Viabilidad Global" value={globalGoalStatus} />
+          </div>
+        </section>
+
+        {/* FASE 7: JUBILACIÓN POR ESCENARIOS (CONSERVADOR, CENTRAL, OPTIMISTA) */}
+        <section className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
+          <div className="flex items-center gap-3">
+            <Clock className="h-6 w-6 text-[#C5A566]" />
+            <h2 className="text-lg font-black text-slate-900">Escenarios de Jubilación Pública y Brechas de Retiro</h2>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {retirementScenarios.map(s => (
+              <div key={s.name} className="border border-slate-200 rounded-lg p-5 bg-slate-50/50 space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-black text-slate-900 text-sm uppercase text-[#C5A566]">{s.name}</h3>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                      s.fiabilidad === "Alta" ? "bg-emerald-100 text-emerald-800" :
+                      s.fiabilidad === "Media" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"
+                    }`}>Fiabilidad: {s.fiabilidad}</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 italic mt-1 leading-relaxed">{s.hipotesis}</p>
+                  
+                  <div className="space-y-1.5 pt-3 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400 font-medium">Años cotizados proyectados:</span>
+                      <strong className="text-slate-800">{s.anosCotizadosProyectados} años</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400 font-medium">Porcentaje regulador:</span>
+                      <strong className="text-slate-800">{formatPercent(s.porcentajeEstimado)}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400 font-medium">Pensión estimada:</span>
+                      <strong className="text-slate-900 font-bold">{formatCurrency(s.pensionEstimada)} / mes</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400 font-medium">Gasto de referencia:</span>
+                      <strong className="text-slate-900">{formatCurrency(s.gastoReferencia)}</strong>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-400 font-medium">Brecha mensual:</span>
+                      <strong className="text-red-600 font-bold">{formatCurrency(s.brecha)} / mes</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 mt-4 text-xs bg-white p-3 rounded">
+                  <span className="text-[10px] text-slate-400 uppercase font-black block">Capital Necesario (90 años)</span>
+                  <strong className="text-slate-900 text-sm font-black block mt-0.5">{formatCurrency(s.capitalNecesario)}</strong>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 text-slate-700 text-xs rounded-lg p-4 space-y-1">
+            <p className="font-bold text-amber-800 flex items-center gap-1.5">
+              <AlertCircle className="h-4 w-4" /> Nota Metodológica Obligatoria:
+            </p>
+            <p className="leading-relaxed">
+              La pensión pública de jubilación proyectada no es un derecho consolidado actual. Depende de cotizaciones futuras, bases reguladoras, edad legal, posibles lagunas y normativa vigente en la fecha de jubilación. Cálculos expresados en euros actuales.
+            </p>
+          </div>
+        </section>
+
+        {/* CHARTS CONTAINER (FASE 15) */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          {/* Chart 1: Projections Area */}
+          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+            <h3 className="font-black text-sm uppercase text-[#C5A566] tracking-wide">Proyección de Patrimonio a la Jubilación</h3>
+            <p className="text-xs text-slate-500">Crecimiento estimado del capital contra el objetivo real hasta la jubilación</p>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={projectionChartData}>
+                  <CartesianGrid stroke="#F1F5F9" strokeDasharray="3 3" />
+                  <XAxis dataKey="edad" stroke="#64748B" fontSize={11} />
+                  <YAxis stroke="#64748B" fontSize={11} tickFormatter={v => `${Math.round(v / 1000)}k`} />
+                  <Tooltip formatter={v => formatCurrency(Number(v))} />
+                  <Legend />
+                  <Area dataKey="Patrimonio Financiero" name="Patrimonio Proyectado" stroke={brand.gold} fill={brand.gold} fillOpacity={0.15} />
+                  <Area dataKey="Ahorro Acumulado" name="Plan de Ahorro Acumulado" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.05} />
+                  <Line dataKey="Capital Objetivo" name="Línea Capital Objetivo" stroke={brand.red} strokeDasharray="6 6" dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-[10px] text-slate-400 text-center leading-relaxed italic">
+              Patrimonio proyectado a la jubilación: {formatCurrency(metrics.estate.projectedTotal)}. Incluye inversiones inmobiliarias si su destino es reinversión.
+            </p>
+          </div>
+
+          {/* Chart 2: Benefits vs Expenses */}
+          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
+            <h3 className="font-black text-sm uppercase text-[#C5A566] tracking-wide">Prestaciones S.S. vs Gasto Familiar Requerido</h3>
+            <p className="text-xs text-slate-500">Comparativa directa de la renta estimada por contingencia frente a la necesidad mensual real</p>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={benefitBarData}>
+                  <CartesianGrid stroke="#F1F5F9" strokeDasharray="3 3" />
+                  <XAxis dataKey="name" stroke="#64748B" fontSize={10} />
+                  <YAxis stroke="#64748B" fontSize={11} tickFormatter={v => `${Math.round(v / 1000)}k`} />
+                  <Tooltip formatter={v => formatCurrency(Number(v))} />
+                  <Legend />
+                  <Bar dataKey="Prestacion" name="Prestación Estimada" fill={brand.gold} radius={[4, 4, 0, 0]} />
+                  <Line type="monotone" dataKey="Gastos" name="Gasto de Referencia" stroke={brand.red} strokeWidth={2} dot={false} />
+                  <ReferenceLine y={expenses.total} stroke={brand.red} strokeDasharray="4 4" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-[10px] text-slate-400 text-center leading-relaxed italic">
+              Un déficit por debajo de la línea de gasto de referencia representa una brecha fáctica que desequilibrará las finanzas del hogar.
+            </p>
+          </div>
+
+        </section>
+
+      </main>
+
+      {/* FOOTER */}
+      <footer className="bg-[#1A1A1A] text-white py-12 px-6 mt-16 border-t border-white/10 shadow-inner">
+        <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <img src={brandLogo} alt="Logo" className="h-16 w-14 object-contain" />
+            <div>
+              <p className="text-lg font-black text-white">JOSÉ CARLOS HIDALGO</p>
+              <p className="text-xs text-white/50">Consultor Financiero Registrado e Intermediario Hipotecario</p>
+              <p className="text-[10px] text-slate-500 max-w-md mt-2 leading-relaxed">
+                Este informe utiliza estimaciones matemáticas conformes a la legislación fiscal y de previsión social española vigente a {new Date().getFullYear()}. Su carácter es meramente didáctico e informativo.
+              </p>
+            </div>
+          </div>
+          <div className="text-sm text-white/70 space-y-1">
+            <p className="font-bold text-[#C5A566]">Contacto Directo:</p>
+            <p>josecarlos@hilolegal.es</p>
+            <p>647 50 60 40</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
 }
 
-function Title({ icon, text }: { icon: ReactNode; text: string }) { return <div className="mb-5 flex items-center gap-3">{icon}<h2 className="text-xl font-black text-slate-950">{text}</h2></div>; }
-function Input({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) { return <label className="block"><span className="mb-1 block text-xs font-bold uppercase text-slate-500">{label}</span><input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={value} onChange={e=>onChange(e.target.value)}/></label>; }
-function NumberInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) { return <label className="block"><span className="mb-1 block text-xs font-bold uppercase text-slate-500">{label}</span><input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" type="number" value={value} onChange={e=>onChange(Number(e.target.value))}/></label>; }
-function SelectInput({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) { return <label className="block"><span className="mb-1 block text-xs font-bold uppercase text-slate-500">{label}</span><select className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={value} onChange={e=>onChange(e.target.value)}>{options.map(option=><option key={option} value={option}>{option}</option>)}</select></label>; }
-function Question({ label, title, description, value, onChange }: { label: string; title: string; description: string; value: string; onChange: (value: string) => void }) { return <label className="block rounded-lg border border-slate-200 bg-slate-50 p-4"><span className="mb-1 block text-xs font-black uppercase text-[#C5A566]">{label}</span><span className="block text-sm font-black text-slate-900">{title}</span><span className="mt-2 block text-xs leading-relaxed text-slate-600">{description}</span><select className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={value} onChange={e=>onChange(e.target.value)}><option value="Si">Si</option><option value="Parcialmente">Parcialmente</option><option value="No">No</option></select></label>; }
-function ResultCard({ label, benefit, gap }: { label: string; benefit: number; gap: number }) { return <article className="rounded-lg border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-black uppercase text-slate-500">{label}</p><p className="mt-2 text-2xl font-black text-slate-950">{eur(benefit)}</p><p className={`mt-2 text-sm font-bold ${gap > 0 ? "text-red-600" : "text-emerald-600"}`}>{gap > 0 ? `Brecha ${eur(gap)}` : "Cubierto"}</p></article>; }
-function ScoreBar({ label, score }: { label: string; score: number }) { const color = score <= 3 ? "bg-red-600" : score <= 6 ? "bg-orange-500" : "bg-emerald-600"; return <div><div className="mb-1 flex justify-between text-sm font-bold"><span>{label}</span><span>{score}/10</span></div><div className="h-2 rounded-full bg-slate-200"><div className={`h-2 rounded-full ${color}`} style={{ width: `${score*10}%` }}/></div></div>; }
-function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-lg border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-black uppercase text-slate-500">{label}</p><p className="mt-2 text-lg font-black text-slate-950">{value}</p></div>; }
+function Title({ icon, text }: { icon: ReactNode; text: string }) { 
+  return (
+    <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-3">
+      {icon}
+      <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">{text}</h2>
+    </div>
+  ); 
+}
+
+function Input({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) { 
+  const isPending = value === "" || value === "No indicado";
+  return (
+    <label className="block">
+      <span className="mb-1 flex items-center justify-between text-[11px] font-bold uppercase text-slate-400">
+        <span>{label}</span>
+        <span className={`text-[9px] px-1 rounded font-bold ${isPending ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+          {isPending ? "Pendiente" : "Verificado"}
+        </span>
+      </span>
+      <input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[#C5A566] focus:ring-1 focus:ring-[#C5A566]" value={value} onChange={e=>onChange(e.target.value)}/>
+    </label>
+  ); 
+}
+
+function NumberInput({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) { 
+  const isPending = value === 0;
+  return (
+    <label className="block">
+      <span className="mb-1 flex items-center justify-between text-[11px] font-bold uppercase text-slate-400">
+        <span>{label}</span>
+        <span className={`text-[9px] px-1 rounded font-bold ${isPending ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+          {isPending ? "Pendiente" : "Verificado"}
+        </span>
+      </span>
+      <input className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-[#C5A566] focus:ring-1 focus:ring-[#C5A566]" type="number" value={value} onChange={e=>onChange(Number(e.target.value))}/>
+    </label>
+  ); 
+}
+
+function SelectInput({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) { 
+  const isPending = value === "Pendiente" || value === "desconocido" || value === "No indicado";
+  return (
+    <label className="block">
+      <span className="mb-1 flex items-center justify-between text-[11px] font-bold uppercase text-slate-400">
+        <span>{label}</span>
+        <span className={`text-[9px] px-1 rounded font-bold ${isPending ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+          {isPending ? "Pendiente" : "Verificado"}
+        </span>
+      </span>
+      <select className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm bg-white focus:border-[#C5A566] focus:ring-1 focus:ring-[#C5A566]" value={value} onChange={e=>onChange(e.target.value)}>
+        {options.map(option=><option key={option} value={option}>{option}</option>)}
+      </select>
+    </label>
+  ); 
+}
+
+function Metric({ label, value }: { label: string; value: string }) { 
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <p className="text-[10px] font-black uppercase text-slate-400">{label}</p>
+      <p className="mt-1.5 text-md font-black text-slate-800">{value}</p>
+    </div>
+  ); 
+}
