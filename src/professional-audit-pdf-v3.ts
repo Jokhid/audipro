@@ -68,12 +68,15 @@ function ensureSpace(doc: jsPDF, state: PageState, needed = 20) {
 }
 
 function heading(doc: jsPDF, state: PageState, text: string, size = 11) {
-  ensureSpace(doc, state, 15);
+  if (state.y > 45) {
+    state.y += 6; // Espaciado anterior
+  }
+  ensureSpace(doc, state, 18);
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(size);
   doc.setTextColor(...SLATE);
   doc.text(text.toUpperCase(), M, state.y);
-  state.y += size * 0.4 + 5;
+  state.y += size * 0.4 + 8; // Espaciado posterior
 }
 
 function paragraph(doc: jsPDF, state: PageState, text: string, size = 8.2) {
@@ -103,7 +106,8 @@ function drawVectorChart(
   referenceValue: number,
   referenceLabel: string
 ) {
-  ensureSpace(doc, state, 70);
+  ensureSpace(doc, state, 82);
+  state.y += 10; // Espaciado anterior
   const chartY = state.y;
   const chartH = 38;
   const chartW = 150;
@@ -118,7 +122,7 @@ function drawVectorChart(
   // Background box
   doc.setFillColor(...LIGHT);
   doc.setDrawColor(...BORDER);
-  doc.roundedRect(M, chartY + 2, W, chartH + 11, 1.5, 1.5, 'FD');
+  doc.roundedRect(M, chartY + 10, W, chartH + 11, 1.5, 1.5, 'FD');
 
   // Axes and Grid
   doc.setDrawColor(220, 225, 230);
@@ -129,7 +133,7 @@ function drawVectorChart(
 
   // Reference lines
   for (let i = 0; i <= 4; i++) {
-    const gridY = chartY + 2 + chartH - (i * (chartH - 8)) / 4;
+    const gridY = chartY + 10 + chartH - (i * (chartH - 8)) / 4;
     doc.line(chartX, gridY, chartX + chartW, gridY);
     
     // Y-axis label
@@ -148,7 +152,7 @@ function drawVectorChart(
     const val = values[index];
     const h = scale(val);
     const bx = chartX + index * barSpacing + (barSpacing - barWidth) / 2;
-    const by = chartY + 2 + chartH - h;
+    const by = chartY + 10 + chartH - h;
 
     // Fill bar based on reference comparison
     if (val < referenceValue) {
@@ -170,12 +174,12 @@ function drawVectorChart(
     doc.setTextColor(...BLACK);
     const textLines = doc.splitTextToSize(cat, barSpacing - 2) as string[];
     textLines.forEach((line, lineIdx) => {
-      doc.text(line, bx + barWidth / 2, chartY + 2 + chartH + 3.2 + (lineIdx * 2.8), { align: 'center' });
+      doc.text(line, bx + barWidth / 2, chartY + 10 + chartH + 3.2 + (lineIdx * 2.8), { align: 'center' });
     });
   });
 
   // Reference line (expenses)
-  const refY = chartY + 2 + chartH - scale(referenceValue);
+  const refY = chartY + 10 + chartH - scale(referenceValue);
   doc.setDrawColor(...ORANGE);
   doc.setLineWidth(0.6);
   doc.line(chartX, refY, chartX + chartW, refY);
@@ -186,7 +190,7 @@ function drawVectorChart(
   doc.setTextColor(...ORANGE);
   doc.text(`${referenceLabel}: ${money(referenceValue)}`, chartX + chartW - 2, refY - 1, { align: 'right' });
 
-  state.y += chartH + 16;
+  state.y += chartH + 28; // Espaciado posterior
 }
 
 // Stacked Bar Chart for scenarios
@@ -197,7 +201,8 @@ function drawRetirementChart(
   scenarios: { name: string; pension: number; rents: number }[],
   referenceValue: number
 ) {
-  ensureSpace(doc, state, 72);
+  ensureSpace(doc, state, 84);
+  state.y += 10; // Espaciado anterior
   const chartY = state.y;
   const chartH = 38;
   const chartW = 150;
@@ -212,7 +217,7 @@ function drawRetirementChart(
   // Background box
   doc.setFillColor(...LIGHT);
   doc.setDrawColor(...BORDER);
-  doc.roundedRect(M, chartY + 2, W, chartH + 15, 1.5, 1.5, 'FD');
+  doc.roundedRect(M, chartY + 10, W, chartH + 15, 1.5, 1.5, 'FD');
 
   // Axes and Grid
   doc.setDrawColor(220, 225, 230);
@@ -223,7 +228,7 @@ function drawRetirementChart(
 
   // Reference lines
   for (let i = 0; i <= 4; i++) {
-    const gridY = chartY + 2 + chartH - (i * (chartH - 8)) / 4;
+    const gridY = chartY + 10 + chartH - (i * (chartH - 8)) / 4;
     doc.line(chartX, gridY, chartX + chartW, gridY);
 
     // Y-axis label
@@ -244,7 +249,7 @@ function drawRetirementChart(
     const bx = chartX + index * barSpacing + (barSpacing - barWidth) / 2;
 
     // Stacked bars: bottom is pension, top is rents
-    const py = chartY + 2 + chartH - pHeight;
+    const py = chartY + 10 + chartH - pHeight;
     doc.setFillColor(...GOLD);
     doc.rect(bx, py, barWidth, pHeight, 'F');
 
@@ -266,11 +271,11 @@ function drawRetirementChart(
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(...BLACK);
-    doc.text(scen.name.toUpperCase(), bx + barWidth / 2, chartY + 2 + chartH + 3.5, { align: 'center' });
+    doc.text(scen.name.toUpperCase(), bx + barWidth / 2, chartY + 10 + chartH + 3.5, { align: 'center' });
   });
 
   // Reference line (expenses)
-  const refY = chartY + 2 + chartH - scale(referenceValue);
+  const refY = chartY + 10 + chartH - scale(referenceValue);
   doc.setDrawColor(...RED);
   doc.setLineWidth(0.6);
   doc.line(chartX, refY, chartX + chartW, refY);
@@ -282,7 +287,7 @@ function drawRetirementChart(
   doc.text(`Gastos Ref: ${money(referenceValue)}`, chartX + chartW - 2, refY - 1, { align: 'right' });
 
   // Legend at bottom
-  const legendY = chartY + 2 + chartH + 8;
+  const legendY = chartY + 10 + chartH + 8;
   doc.setFillColor(...GOLD);
   doc.rect(M + 25, legendY, 3, 3, 'F');
   doc.setFont('Helvetica', 'normal');
@@ -299,7 +304,160 @@ function drawRetirementChart(
   doc.line(M + 125, legendY + 1.5, M + 130, legendY + 1.5);
   doc.text('Gasto Mensual de Referencia', M + 132, legendY + 2.4);
 
-  state.y += chartH + 20;
+  state.y += chartH + 28; // Espaciado posterior
+}
+
+function drawPatrimonioProyectadoChart(
+  doc: jsPDF,
+  state: PageState,
+  title: string,
+  edadActual: number,
+  dineroBanco: number,
+  dineroInvertido: number,
+  rentabilidadInversion: number,
+  rentabilidadAhorroSistematico: number,
+  ahorroSistematicoMensual: number,
+  destinoRentasInmobiliarias: string,
+  rentasInmobiliariasMensualesNetas: number,
+  capitalObjetivo: number
+) {
+  ensureSpace(doc, state, 84);
+  state.y += 10; // Espaciado anterior
+  const chartY = state.y;
+  const chartH = 38;
+  const chartW = 150;
+  const chartX = M + 15;
+
+  // Title
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...SLATE);
+  doc.text(title.toUpperCase(), M, chartY);
+
+  // Background box
+  doc.setFillColor(...LIGHT);
+  doc.setDrawColor(...BORDER);
+  doc.roundedRect(M, chartY + 10, W, chartH + 15, 1.5, 1.5, 'FD');
+
+  // Axes and Grid
+  doc.setDrawColor(220, 225, 230);
+  doc.setLineWidth(0.2);
+
+  const targetAge = Math.max(67, edadActual + 15);
+  const yearsTotal = targetAge - edadActual;
+  const step = Math.max(1, Math.floor(yearsTotal / 3));
+  
+  const sampleAges = [
+    edadActual,
+    edadActual + step,
+    edadActual + 2 * step,
+    targetAge
+  ];
+
+  const points = sampleAges.map(age => {
+    const i = age - edadActual;
+    const invRate = (rentabilidadInversion || 5) / 100;
+    const savRate = (rentabilidadAhorroSistematico || 6) / 100;
+    const annualSaving = (ahorroSistematicoMensual || 150) * 12;
+
+    const savingAcc = savRate > 0 
+      ? annualSaving * ((Math.pow(1 + savRate, i) - 1) / savRate)
+      : annualSaving * i;
+    
+    const invAcc = (dineroInvertido || 0) * Math.pow(1 + invRate, i);
+    const rentsAcc = (destinoRentasInmobiliarias === "reinversion" || destinoRentasInmobiliarias === "mixto")
+      ? (rentasInmobiliariasMensualesNetas || 0) * 12 * i
+      : 0;
+
+    const total = (dineroBanco || 0) + invAcc + savingAcc + rentsAcc;
+    return {
+      age,
+      patrimonioTotal: Math.round(total),
+      ahorroSistematico: Math.round(savingAcc)
+    };
+  });
+
+  const maxValue = Math.max(...points.map(p => p.patrimonioTotal), capitalObjetivo, 50000);
+  const scale = (val: number) => (val / maxValue) * (chartH - 8);
+
+  // Reference lines
+  for (let i = 0; i <= 4; i++) {
+    const gridY = chartY + 10 + chartH - (i * (chartH - 8)) / 4;
+    doc.line(chartX, gridY, chartX + chartW, gridY);
+
+    // Y-axis label
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(5.5);
+    doc.setTextColor(...MUTED);
+    doc.text(money((maxValue * i) / 4), chartX - 2, gridY + 1.5, { align: 'right' });
+  }
+
+  // Draw bars
+  const numBars = points.length;
+  const barSpacing = chartW / numBars;
+  const barWidth = barSpacing * 0.45;
+
+  points.forEach((pt, index) => {
+    const totalHeight = scale(pt.patrimonioTotal);
+    const savingHeight = scale(pt.ahorroSistematico);
+    const bx = chartX + index * barSpacing + (barSpacing - barWidth) / 2;
+
+    const ty = chartY + 10 + chartH - totalHeight;
+    doc.setFillColor(...GOLD);
+    doc.rect(bx, ty, barWidth, totalHeight, 'F');
+
+    if (pt.ahorroSistematico > 0) {
+      const sy = chartY + 10 + chartH - savingHeight;
+      doc.setFillColor(59, 130, 246);
+      doc.rect(bx, sy, barWidth, savingHeight, 'F');
+    }
+
+    // Total label
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(5.5);
+    doc.setTextColor(...SLATE);
+    doc.text(money(pt.patrimonioTotal), bx + barWidth / 2, ty - 1, { align: 'center' });
+
+    // X-axis label
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...BLACK);
+    doc.text(`Edad ${pt.age}`, bx + barWidth / 2, chartY + 10 + chartH + 3.5, { align: 'center' });
+  });
+
+  // Reference line (Capital Objetivo)
+  const refY = chartY + 10 + chartH - scale(capitalObjetivo);
+  doc.setDrawColor(...RED);
+  doc.setLineWidth(0.6);
+  const dashW = 3;
+  for (let lx = chartX; lx < chartX + chartW; lx += dashW * 2) {
+    doc.line(lx, refY, Math.min(lx + dashW, chartX + chartW), refY);
+  }
+
+  // Label for reference line
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(5.5);
+  doc.setTextColor(...RED);
+  doc.text(`Cap. Objetivo: ${money(capitalObjetivo)}`, chartX + chartW - 2, refY - 1.5, { align: 'right' });
+
+  // Legend at bottom
+  const legendY = chartY + 10 + chartH + 8;
+  doc.setFillColor(...GOLD);
+  doc.rect(M + 12, legendY, 3, 3, 'F');
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(5.5);
+  doc.setTextColor(...MUTED);
+  doc.text('Patrimonio Proyectado Total', M + 17, legendY + 2.4);
+
+  doc.setFillColor(59, 130, 246);
+  doc.rect(M + 62, legendY, 3, 3, 'F');
+  doc.text('Plan de Ahorro Acumulado', M + 67, legendY + 2.4);
+
+  doc.setFillColor(...RED);
+  doc.rect(M + 112, legendY, 3, 0.6, 'F');
+  doc.text('Capital Objetivo Estimado', M + 117, legendY + 2.4);
+
+  state.y += chartH + 28; // Espaciado posterior
 }
 
 // Table cell drawers
@@ -309,7 +467,8 @@ function drawTable(
   headers: string[],
   widths: number[],
   rowsData: string[][],
-  alignments: ("left" | "right" | "center")[] = []
+  alignments: ("left" | "right" | "center")[] = [],
+  uniformRowHeight = false
 ) {
   ensureSpace(doc, state, 15);
   const startY = state.y;
@@ -330,14 +489,32 @@ function drawTable(
   });
   state.y += 8.0;
 
+  // Pre-calculate line splitting and maxLines for each row, and find global maximum lines if uniformRowHeight is true
+  let absoluteMaxLines = 1;
+  const processedRows = rowsData.map(row => {
+    const cellLines = row.map((val, i) => {
+      const lines = doc.splitTextToSize(val, widths[i] - 4);
+      return lines.slice(0, 2); // Limit to maximum of 2 lines as requested
+    });
+    const maxLines = Math.max(...cellLines.map(lines => lines.length), 1);
+    if (maxLines > absoluteMaxLines) {
+      absoluteMaxLines = maxLines;
+    }
+    return { cellLines, maxLines };
+  });
+
   // Rows
-  rowsData.forEach((row, rowIndex) => {
-    ensureSpace(doc, state, 8.5);
+  processedRows.forEach(({ cellLines, maxLines }, rowIndex) => {
+    const linesToUse = uniformRowHeight ? absoluteMaxLines : maxLines;
+    const rowHeight = 4.0 + (linesToUse * 3.5);
+
+    ensureSpace(doc, state, rowHeight + 1.0);
     x = M;
     doc.setFillColor(rowIndex % 2 ? 255 : 248, rowIndex % 2 ? 255 : 250, rowIndex % 2 ? 255 : 252);
     doc.setDrawColor(...BORDER);
-    doc.rect(M, state.y, W, 7.5, 'FD');
+    doc.rect(M, state.y, W, rowHeight, 'FD');
 
+    const row = rowsData[rowIndex];
     row.forEach((val, i) => {
       const align = alignments[i] || 'left';
       const tx = align === 'right' ? x + widths[i] - 3 : align === 'center' ? x + widths[i]/2 : x + 3;
@@ -357,11 +534,13 @@ function drawTable(
         doc.setTextColor(...RED);
       }
 
-      const txtLine = doc.splitTextToSize(val, widths[i] - 4).slice(0, 1);
-      doc.text(txtLine, tx, state.y + 5.0, { align });
+      const lines = cellLines[i];
+      lines.forEach((lineText, lineIdx) => {
+        doc.text(lineText, tx, state.y + 5.0 + (lineIdx * 3.5), { align });
+      });
       x += widths[i];
     });
-    state.y += 7.5;
+    state.y += rowHeight;
   });
   state.y += 3.5;
 }
@@ -395,7 +574,7 @@ async function generatePdf() {
   // Central decorative grid
   doc.setDrawColor(...BORDER);
   doc.setLineWidth(0.2);
-  doc.line(20, 110, 190, 110);
+  doc.line(20, 118, 190, 118);
   doc.line(20, 220, 190, 220);
 
   // Titles (Shifted for premium light balance without logo)
@@ -685,7 +864,8 @@ async function generatePdf() {
     ['CONTINGENCIA S.S.', 'ESTIMACIÓN', 'GASTO REF.', 'BRECHA MENSUAL', 'FIABILIDAD', 'ACCIÓN RECOMENDADA'],
     [50, 24, 22, 28, 20, 38],
     prevRows,
-    ['left', 'right', 'right', 'right', 'center', 'left']
+    ['left', 'right', 'right', 'right', 'center', 'left'],
+    true
   );
 
   // Add the native vector chart
@@ -722,7 +902,7 @@ async function generatePdf() {
     ['CAPITAL OBJETIVO RECOMENDADO', money(metrics.familyNeed.capitalFamiliarObjetivo), 'Seguros de vida vigentes', money(formData.capitalSeguroVidaExistente)],
     ['DÉFICIT NETO DE PROTECCIÓN', money(metrics.familyNeed.deficitDeProteccion), 'Diagnóstico de protección familiar', metrics.familyNeed.deficitDeProteccion > 0 ? "VULNERABLE" : "PROTEGIDO"]
   ];
-  drawTable(doc, state, ['CONCEPTO DE LIQUIDEZ', 'VALOR', 'AJUSTE SUCESORIO', 'IMPORTE'], [50, 32, 60, 40], famRows);
+  drawTable(doc, state, ['CONCEPTO DE LIQUIDEZ', 'VALOR', 'AJUSTE SUCESORIO', 'IMPORTE'], [50, 32, 60, 40], famRows, [], true);
 
   heading(doc, state, '7. PLANIFICACIÓN DE JUBILACIÓN (TRES ESCENARIOS)');
   paragraph(doc, state, 'Tres proyecciones matemáticas considerando la pensión de jubilación ordinaria estimada junto con el flujo pasivo de rentas inmobiliarias netas declaradas.');
@@ -777,6 +957,23 @@ async function generatePdf() {
   ];
   drawTable(doc, state, ['COMPONENTE PATRIMONIAL', 'VALOR PROYECTADO', 'HIPÓTESIS Y COMENTARIOS'], [60, 42, 80], projRows);
 
+  state.y += 4;
+  drawPatrimonioProyectadoChart(
+    doc,
+    state,
+    'Proyección de Patrimonio a la Jubilación',
+    formData.edad,
+    formData.dineroBanco,
+    formData.dineroInvertido,
+    formData.rentabilidadInversion,
+    formData.rentabilidadAhorroSistematico,
+    formData.ahorroSistematicoMensual,
+    formData.destinoRentasInmobiliarias,
+    formData.rentasInmobiliariasMensualesNetas,
+    metrics.retirementGap.capitalObjetivo
+  );
+
+  newPage(doc, state, 'Niveles de Seguridad');
   heading(doc, state, '9. NIVELES DE SEGURIDAD POR ÁREAS DE AUDITORÍA');
   paragraph(doc, state, 'Resumen del estado de cobertura fáctica asignada a cada pilar patrimonial básico de la consultoría.');
 
@@ -818,16 +1015,16 @@ async function generatePdf() {
   if (warnings.length > 0) {
     ensureSpace(doc, state, 22);
     const boxY = state.y;
-    doc.setFillColor(255, 251, 235);
-    doc.setDrawColor(245, 158, 11);
+    doc.setFillColor(254, 240, 138); // Yellow background
+    doc.setDrawColor(202, 138, 4);    // Yellow-gold border
     doc.roundedRect(M, boxY, W, 18, 2, 2, 'FD');
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(7);
-    doc.setTextColor(180, 83, 9);
+    doc.setTextColor(0, 0, 0);       // Black text
     doc.text('ADVERTENCIAS Y ALERTAS PENDIENTES DE VALIDAR:', M + 4, boxY + 5);
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(6.5);
-    doc.setTextColor(120, 53, 4);
+    doc.setTextColor(26, 26, 26);    // Darker black-gray text
     const wTexts = warnings.slice(0, 2).map((w: any) => `* [${(w.type || 'ALERTA').toUpperCase()}] ${w.text || ''}`).join('   ');
     doc.text(doc.splitTextToSize(wTexts, W - 8), M + 4, boxY + 10);
     state.y += 22;
@@ -915,9 +1112,19 @@ async function generatePdf() {
 
   // Closing Note block
   ensureSpace(doc, state, 30);
-  state.y += 4;
-  heading(doc, state, 'CIERRE PROFESIONAL Y NOTA METODOLÓGICA', 8.5);
-  paragraph(doc, state, 'Este diagnóstico representa una foto matemática rigurosa basada en el modelo legal y de previsión de la Seguridad Social de España. Para corregir las brechas identificadas, ordenar su patrimonio o formalizar los complementos de ahorro de jubilación, puede ponerse en contacto con José Carlos Hidalgo en josecarlos@hilolegal.es o en el teléfono 647 50 60 40.');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(...SLATE);
+  doc.text('NOTA METODOLÓGICA', M, state.y);
+  state.y += 4.5;
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(...BLACK);
+  const pMethod = 'Este diagnóstico representa una foto matemática rigurosa basada en el modelo legal y de previsión de la Seguridad Social de España. Para corregir las brechas identificadas, ordenar su patrimonio o formalizar los complementos de ahorro de jubilación, puede ponerse en contacto con José Carlos Hidalgo en josecarlos@hilolegal.es o en el teléfono 647 50 60 40.';
+  const pMethodLines = doc.splitTextToSize(pMethod, W);
+  doc.text(pMethodLines, M, state.y);
+  state.y += pMethodLines.length * 3.8 + 12;
 
   footer(doc, state.page);
   doc.save(`informe-auditoria-profesional-${slug(clientName)}.pdf`);

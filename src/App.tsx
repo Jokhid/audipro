@@ -445,7 +445,7 @@ export default function App() {
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fiabilidad del Informe</span>
               <span className={`text-xl font-black mt-2 px-3 py-1 rounded ${
                 dataQuality.reliability === "Alta" ? "bg-emerald-100 text-emerald-800" :
-                dataQuality.reliability === "Media" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"
+                dataQuality.reliability === "Media" ? "bg-yellow-300 text-black font-semibold" : "bg-red-100 text-red-800"
               }`}>{dataQuality.reliability}</span>
               <p className="text-xs text-slate-500 mt-3 leading-relaxed">
                 {dataQuality.reliability === "Alta" ? "Cálculos de alta precisión" : "Requiere validar algunas variables críticas"}
@@ -459,8 +459,8 @@ export default function App() {
                 <ul className="space-y-1.5">
                   {dataQuality.pendingList.map(item => (
                     <li key={item} className="text-xs flex items-center gap-2 text-slate-700 font-medium">
-                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                      {item} <span className="text-[10px] text-amber-600 bg-amber-50 px-1 rounded">Pendiente</span>
+                      <span className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
+                      {item} <span className="text-[10px] text-black bg-yellow-300 px-1 rounded font-semibold">Pendiente</span>
                     </li>
                   ))}
                 </ul>
@@ -495,7 +495,7 @@ export default function App() {
                     <p className="text-xs text-slate-500">Incapacidad Temporal en contingencias comunes</p>
                   </div>
                   <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
-                    scores.baja >= 8 ? "bg-emerald-50 text-emerald-700" : scores.baja >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                    scores.baja >= 8 ? "bg-emerald-50 text-emerald-700" : scores.baja >= 5 ? "bg-yellow-300 text-black font-semibold shadow-sm" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.baja}/10</span>
                 </div>
                 {renderThermometer(scores.baja)}
@@ -512,8 +512,8 @@ export default function App() {
                 <p className="text-xs text-slate-700 leading-relaxed font-medium">
                   <strong>Recomendación:</strong> Cobertura suficiente solo en el tramo del 75%. Se recomienda subsidio privado de baja laboral para complementar los primeros 20 días.
                 </p>
-                <div className="mt-1.5 text-[11px] text-slate-600 bg-amber-50/50 p-2.5 border-l-2 border-amber-500 rounded-r leading-relaxed">
-                  <strong>¿Por qué se sugiere esto?</strong> Durante los primeros 3 días de baja por enfermedad común, el trabajador no percibe subsidio público. Del día 4 al 20, la Seguridad Social solo cubre el 60% de la base reguladora (un déficit de <strong>{formatCurrency(temporaryDisability.tramo60Brecha)}/mes</strong> frente a tus gastos fijos de <strong>{formatCurrency(expenses.total)}/mes</strong>). El seguro de subsidio privado cubre esta brecha crítica inicial para evitar tener que recurrir a tus ahorros de emergencia durante convalecencias.
+                <div className="mt-1.5 text-[11px] text-slate-800 bg-yellow-100/60 p-2.5 border-l-2 border-yellow-500 rounded-r leading-relaxed">
+                  <strong>¿Por qué se sugiere esto?</strong> Durante los primeros 3 days de baja por enfermedad común, el trabajador no percibe subsidio público. Del día 4 al 20, la Seguridad Social solo cubre el 60% de la base reguladora (un déficit de <strong>{formatCurrency(temporaryDisability.tramo60Brecha)}/mes</strong> frente a tus gastos fijos de <strong>{formatCurrency(expenses.total)}/mes</strong>). El seguro de subsidio privado cubre esta brecha crítica inicial para evitar tener que recurrir a tus ahorros de emergencia durante convalecencias.
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
                   <span>Prioridad: <strong className="text-red-500 font-bold uppercase">Alta</strong></span>
@@ -529,7 +529,7 @@ export default function App() {
                     <p className="text-xs text-slate-500">Escenario conjunto de viudedad y orfandad</p>
                   </div>
                   <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
-                    scores.familia >= 8 ? "bg-emerald-50 text-emerald-700" : scores.familia >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                    scores.familia >= 8 ? "bg-emerald-50 text-emerald-700" : scores.familia >= 5 ? "bg-yellow-300 text-black font-semibold shadow-sm" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.familia}/10</span>
                 </div>
                 {renderThermometer(scores.familia)}
@@ -550,7 +550,7 @@ export default function App() {
                     ? "Subsidio mensual cubierto por escenario familiar conjunto. Ajustar seguros para cubrir deudas." 
                     : `Existe un déficit familiar. Se recomienda capital de vida de ${formatCurrency(familyNeed.deficitDeProteccion)}.`}
                 </p>
-                <div className="mt-1.5 text-[11px] text-slate-600 bg-amber-50/50 p-2.5 border-l-2 border-[#C5A566] rounded-r leading-relaxed">
+                <div className="mt-1.5 text-[11px] text-slate-800 bg-yellow-100/60 p-2.5 border-l-2 border-yellow-500 rounded-r leading-relaxed">
                   <strong>¿Cómo se calcula y por qué se sugiere?</strong> El capital objetivo recomendado de <strong>{formatCurrency(familyNeed.capitalFamiliarObjetivo)}</strong> se calcula sumando:
                   <span className="block mt-1 pl-2 border-l border-slate-200">
                     • Amortización de deudas pendientes: <strong>{formatCurrency(familyNeed.detalles.deuda)}</strong> (para que tu familia no herede deudas).<br />
@@ -574,7 +574,7 @@ export default function App() {
                     <p className="text-xs text-slate-500">Disponibilidad líquida frente a emergencias</p>
                   </div>
                   <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
-                    scores.fondo >= 8 ? "bg-emerald-50 text-emerald-700" : scores.fondo >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                    scores.fondo >= 8 ? "bg-emerald-50 text-emerald-700" : scores.fondo >= 5 ? "bg-yellow-300 text-black font-semibold shadow-sm" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.fondo}/10</span>
                 </div>
                 {renderThermometer(scores.fondo)}
@@ -610,7 +610,7 @@ export default function App() {
                     <p className="text-xs text-slate-500">Ratios de endeudamiento sobre salario e ingresos</p>
                   </div>
                   <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
-                    scores.deuda >= 8 ? "bg-emerald-50 text-emerald-700" : scores.deuda >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                    scores.deuda >= 8 ? "bg-emerald-50 text-emerald-700" : scores.deuda >= 5 ? "bg-yellow-300 text-black font-semibold shadow-sm" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.deuda}/10</span>
                 </div>
                 {renderThermometer(scores.deuda)}
@@ -646,7 +646,7 @@ export default function App() {
                     <p className="text-xs text-slate-500">Pensiones públicas y brecha de retiro</p>
                   </div>
                   <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
-                    scores.jubilacion >= 8 ? "bg-emerald-50 text-emerald-700" : scores.jubilacion >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                    scores.jubilacion >= 8 ? "bg-emerald-50 text-emerald-700" : scores.jubilacion >= 5 ? "bg-yellow-300 text-black font-semibold shadow-sm" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.jubilacion}/10</span>
                 </div>
                 {renderThermometer(scores.jubilacion)}
@@ -663,7 +663,7 @@ export default function App() {
                 <p className="text-xs text-slate-700 leading-relaxed font-medium">
                   <strong>Recomendación:</strong> Se requiere un capital previsor de {formatCurrency(retirementGap.capitalObjetivo)} para compensar la brecha mensual estimada.
                 </p>
-                <div className="mt-1.5 text-[11px] text-slate-600 bg-amber-50/50 p-2.5 border-l-2 border-amber-500 rounded-r leading-relaxed">
+                <div className="mt-1.5 text-[11px] text-slate-800 bg-yellow-100/60 p-2.5 border-l-2 border-yellow-500 rounded-r leading-relaxed">
                   <strong>¿Por qué se sugiere esto?</strong> La jubilación pública cubrirá <strong>{formatCurrency(retirementGap.pensionEstimada)}/mes</strong>, generando una brecha de <strong>{formatCurrency(retirementGap.brechaMensual)}/mes</strong> frente a tus necesidades fácticas. Para cubrir este desfase durante más de 20 años de retiro, es vital acumular <strong>{formatCurrency(retirementGap.capitalObjetivo)}</strong> a los 67 años, lo cual se logra de forma cómoda y sistemática ahorrando <strong>{formatCurrency(retirementGap.recommendedSaving)}/mes</strong> en planes eficientes con interés compuesto.
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
@@ -680,7 +680,7 @@ export default function App() {
                     <p className="text-xs text-slate-500">Crecimiento de capital contra la inflación</p>
                   </div>
                   <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
-                    scores.inflacion >= 8 ? "bg-emerald-50 text-emerald-700" : scores.inflacion >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                    scores.inflacion >= 8 ? "bg-emerald-50 text-emerald-700" : scores.inflacion >= 5 ? "bg-yellow-300 text-black font-semibold shadow-sm" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.inflacion}/10</span>
                 </div>
                 {renderThermometer(scores.inflacion)}
@@ -716,14 +716,14 @@ export default function App() {
                     <p className="text-xs text-slate-500">Blindaje legal familiar e instrumental patrimonial</p>
                   </div>
                   <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
-                    scores.legal >= 8 ? "bg-emerald-50 text-emerald-700" : scores.legal >= 5 ? "bg-amber-50 text-amber-700" : "bg-red-50 text-red-700"
+                    scores.legal >= 8 ? "bg-emerald-50 text-emerald-700" : scores.legal >= 5 ? "bg-yellow-300 text-black font-semibold shadow-sm" : "bg-red-50 text-red-700"
                   }`}>Puntuación: {scores.legal}/10</span>
                 </div>
                 {renderThermometer(scores.legal)}
                 <p className="text-xs text-slate-700 leading-relaxed font-medium">
                   <strong>Recomendación:</strong> Falta testamento, inventario patrimonial, poder preventivo y protocolo familiar de contingencia. Se recomienda ordenar notarialmente estas actas urgentemente.
                 </p>
-                <div className="mt-1.5 text-[11px] text-slate-600 bg-amber-50/50 p-2.5 border-l-2 border-red-500 rounded-r leading-relaxed">
+                <div className="mt-1.5 text-[11px] text-slate-800 bg-yellow-100/60 p-2.5 border-l-2 border-yellow-500 rounded-r leading-relaxed">
                   <strong>¿Por qué se sugiere esto?</strong> La ausencia de testamento o poder preventivo expone a la familia a un proceso costoso y lento de declaración de herederos judiciales, bloqueo de cuentas corrientes y posibles sobrecostes impositivos. Formalizar estas actas notariales cuesta menos de 150 € y otorga blindaje sucesorio y de representación legal inmediato.
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
@@ -1108,7 +1108,7 @@ export default function App() {
                     <td className="px-4 py-3 text-right text-emerald-700 font-bold">{formatCurrency(goal.aportacionFinanciera)}/mes</td>
                     <td className="px-4 py-3 text-center">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                        goal.viable === "Viable" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                        goal.viable === "Viable" ? "bg-emerald-100 text-emerald-800" : "bg-yellow-300 text-black font-semibold shadow-sm"
                       }`}>{goal.viable}</span>
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -1142,7 +1142,7 @@ export default function App() {
                     <h3 className="font-black text-slate-900 text-sm uppercase text-[#C5A566]">{s.name}</h3>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
                       s.fiabilidad === "Alta" ? "bg-emerald-100 text-emerald-800" :
-                      s.fiabilidad === "Media" ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"
+                      s.fiabilidad === "Media" ? "bg-yellow-300 text-black font-semibold shadow-sm" : "bg-red-100 text-red-800"
                     }`}>Fiabilidad: {s.fiabilidad}</span>
                   </div>
                   <p className="text-[10px] text-slate-500 italic mt-1 leading-relaxed">{s.hipotesis}</p>
@@ -1179,8 +1179,8 @@ export default function App() {
             ))}
           </div>
 
-          <div className="bg-amber-50 border border-amber-200 text-slate-700 text-xs rounded-lg p-4 space-y-1">
-            <p className="font-bold text-amber-800 flex items-center gap-1.5">
+          <div className="bg-yellow-100/60 border border-yellow-300 text-slate-800 text-xs rounded-lg p-4 space-y-1">
+            <p className="font-bold text-black flex items-center gap-1.5">
               <AlertCircle className="h-4 w-4" /> Nota Metodológica Obligatoria:
             </p>
             <p className="leading-relaxed">
@@ -1281,7 +1281,7 @@ function Input({ label, value, onChange }: { label: string; value: string; onCha
     <label className="block">
       <span className="mb-1 flex items-center justify-between text-[11px] font-bold uppercase text-slate-400">
         <span>{label}</span>
-        <span className={`text-[9px] px-1 rounded font-bold ${isPending ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+        <span className={`text-[9px] px-1 rounded font-bold ${isPending ? "bg-yellow-300 text-black font-semibold" : "bg-emerald-100 text-emerald-700"}`}>
           {isPending ? "Pendiente" : "Verificado"}
         </span>
       </span>
@@ -1296,7 +1296,7 @@ function NumberInput({ label, value, onChange }: { label: string; value: number;
     <label className="block">
       <span className="mb-1 flex items-center justify-between text-[11px] font-bold uppercase text-slate-400">
         <span>{label}</span>
-        <span className={`text-[9px] px-1 rounded font-bold ${isPending ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+        <span className={`text-[9px] px-1 rounded font-bold ${isPending ? "bg-yellow-300 text-black font-semibold" : "bg-emerald-100 text-emerald-700"}`}>
           {isPending ? "Pendiente" : "Verificado"}
         </span>
       </span>
@@ -1311,7 +1311,7 @@ function SelectInput({ label, value, options, onChange }: { label: string; value
     <label className="block">
       <span className="mb-1 flex items-center justify-between text-[11px] font-bold uppercase text-slate-400">
         <span>{label}</span>
-        <span className={`text-[9px] px-1 rounded font-bold ${isPending ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+        <span className={`text-[9px] px-1 rounded font-bold ${isPending ? "bg-yellow-300 text-black font-semibold" : "bg-emerald-100 text-emerald-700"}`}>
           {isPending ? "Pendiente" : "Verificado"}
         </span>
       </span>

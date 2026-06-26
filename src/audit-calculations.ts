@@ -19,12 +19,18 @@ export function formatRiskLevel(sev: "grave" | "moderada" | "leve"): string {
 
 // 1. Gasto mensual total
 export function calculateMonthlyExpenses(data: ClientData) {
-  const personal = Number(data.gastoMensualPersonal || data.gastosMensuales || 0);
-  const rentOrMortgage = Number(data.cuotaHipoteca || data.viviendaPrestamosMensual || data.alquilerHipotecaPrestamos || 0);
+  const personal = Number(data.gastoMensualPersonal !== undefined ? data.gastoMensualPersonal : (data.gastosMensuales || 0));
+  
+  // Prefer explicitly defined cuotaHipoteca when it is greater than 0, 
+  // otherwise fallback to viviendaPrestamosMensual (which represents rent or general housing costs).
+  const rentOrMortgage = Number(data.cuotaHipoteca) > 0 
+    ? Number(data.cuotaHipoteca) 
+    : Number(data.viviendaPrestamosMensual !== undefined ? data.viviendaPrestamosMensual : (data.alquilerHipotecaPrestamos || 0));
+    
   const loansAndCards = Number(data.cuotaPrestamos || 0) + Number(data.cuotaTarjetas || 0);
   const housing = rentOrMortgage + loansAndCards;
   const realEstate = Number(data.gastosInmobiliariosMensuales || 0);
-  const total = personal + housing + realEstate;
+  const total = personal + housing;
   return { personal, housing, realEstate, total };
 }
 
@@ -382,7 +388,7 @@ export function calculateSecurityScores(data: ClientData, metrics: any) {
 
   // Fondo de emergencia
   const meses = metrics.liquidity.mesesCubiertos;
-  const fondo = clampScore(meses < 2 ? 2 : meses < 3 ? 4 : meses < 6 ? 7 : meses <= 9 ? 10 : 8);
+  const fondo = clampScore(meses < 2 ? 2 : meses < 3 ? 4 : meses < 6 ? 7 : 10);
 
   // Baja laboral (Incapacidad Temporal)
   let bajaBase = data.preguntas.p01 === "Si" ? 10 : data.preguntas.p01 === "Parcialmente" ? 6 : 2;
@@ -391,6 +397,12 @@ export function calculateSecurityScores(data: ClientData, metrics: any) {
   }
   if (data.autonomo || data.regimenSeguridadSocial === "RETA (Autónomos)") {
     bajaBase -= 1; // autónomos tienen mayor vulnerabilidad estructural
+  }
+  // Si las prestaciones públicas en el tramo más desfavorable (60%) cubren plenamente los gastos fijos, la seguridad es absoluta (10/10)
+  if (metrics.temporaryDisability && metrics.temporaryDisability.tramo60Brecha === 0) {
+    bajaBase = 10;
+  } else if (metrics.temporaryDisability && metrics.temporaryDisability.tramo75Brecha === 0) {
+    bajaBase = Math.max(bajaBase, 8);
   }
   const baja = clampScore(bajaBase);
 
@@ -439,6 +451,28 @@ export function calculateSecurityScores(data: ClientData, metrics: any) {
   let inflacionBase = data.preguntas.p06 === "Si" ? 10 : 3;
   if (Number(data.dineroInvertido || 0) > Number(data.dineroBanco || 0)) inflacionBase += 2;
   if (Number(data.rentabilidadInversion || 0) > 4) inflacionBase += 1;
+
+  // Ajustes basados en la realidad patrimonial y rentas
+  const projectedTotal = metrics?.estate?.projectedTotal || 0;
+  const capitalObjetivo = metrics?.retirementGap?.capitalObjetivo || 0;
+
+  if (projectedTotal >= 2000000) {
+    inflacionBase = Math.max(inflacionBase, 10);
+  } else if (projectedTotal >= 1000000) {
+    inflacionBase = Math.max(inflacionBase, 9);
+  } else if (projectedTotal >= 500000) {
+    inflacionBase = Math.max(inflacionBase, 8);
+  } else if (projectedTotal >= 250000) {
+    inflacionBase = Math.max(inflacionBase, 6);
+  }
+
+  // Si supera su capital objetivo de jubilación por al menos el 110% (1.10), alcanza el 10/10
+  if (capitalObjetivo > 0 && projectedTotal >= capitalObjetivo * 1.1) {
+    inflacionBase = Math.max(inflacionBase, 10);
+  } else if (capitalObjetivo > 0 && projectedTotal >= capitalObjetivo) {
+    inflacionBase = Math.max(inflacionBase, 8);
+  }
+
   const inflacion = clampScore(inflacionBase);
 
   // Orden legal y sucesorio
@@ -512,7 +546,7 @@ export function validateReportConsistency(data: ClientData): Warning[] {
 
   // 6. Baja laboral tramo 60% vs 75%
   const base = Number(data.baseCotizacion || data.baseCotizacionActual || 2800);
-  const totalGasto = Number(data.gastoMensualPersonal || data.gastosMensuales || 0) + (Number(data.cuotaHipoteca || 0) + Number(data.cuotaPrestamos || 0) + Number(data.cuotaTarjetas || 0) || Number(data.viviendaPrestamosMensual || data.alquilerHipotecaPrestamos || 0));
+  const totalGasto = calculateMonthlyExpenses(data).total;
   if (base * 0.75 >= totalGasto && base * 0.60 < totalGasto) {
     warnings.push({
       type: "importante",
