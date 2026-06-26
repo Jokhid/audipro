@@ -319,7 +319,8 @@ function drawPatrimonioProyectadoChart(
   ahorroSistematicoMensual: number,
   destinoRentasInmobiliarias: string,
   rentasInmobiliariasMensualesNetas: number,
-  capitalObjetivo: number
+  capitalObjetivo: number,
+  capitalObjetivoOptimista: number
 ) {
   ensureSpace(doc, state, 84);
   state.y += 10; // Espaciado anterior
@@ -377,7 +378,7 @@ function drawPatrimonioProyectadoChart(
     };
   });
 
-  const maxValue = Math.max(...points.map(p => p.patrimonioTotal), capitalObjetivo, 50000);
+  const maxValue = Math.max(...points.map(p => p.patrimonioTotal), capitalObjetivo, capitalObjetivoOptimista, 50000);
   const scale = (val: number) => (val / maxValue) * (chartH - 8);
 
   // Reference lines
@@ -425,37 +426,53 @@ function drawPatrimonioProyectadoChart(
     doc.text(`Edad ${pt.age}`, bx + barWidth / 2, chartY + 10 + chartH + 3.5, { align: 'center' });
   });
 
-  // Reference line (Capital Objetivo)
+  // Reference line (Capital Objetivo Central)
   const refY = chartY + 10 + chartH - scale(capitalObjetivo);
-  doc.setDrawColor(...RED);
-  doc.setLineWidth(0.6);
+  doc.setDrawColor(249, 115, 22); // Orange
+  doc.setLineWidth(0.3);
   const dashW = 3;
   for (let lx = chartX; lx < chartX + chartW; lx += dashW * 2) {
     doc.line(lx, refY, Math.min(lx + dashW, chartX + chartW), refY);
   }
 
-  // Label for reference line
+  // Label for central reference line
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(5.5);
+  doc.setTextColor(249, 115, 22);
+  doc.text(`Cap. Central: ${money(capitalObjetivo)}`, chartX + chartW - 2, refY - 1.5, { align: 'right' });
+
+  // Reference line (Capital Objetivo Optimista)
+  const refYOpt = chartY + 10 + chartH - scale(capitalObjetivoOptimista);
+  doc.setDrawColor(...RED); // Red
+  doc.setLineWidth(0.3);
+  for (let lx = chartX; lx < chartX + chartW; lx += dashW * 1.5) {
+    doc.line(lx, refYOpt, Math.min(lx + dashW, chartX + chartW), refYOpt);
+  }
+
+  // Label for optimistic reference line
   doc.setTextColor(...RED);
-  doc.text(`Cap. Objetivo: ${money(capitalObjetivo)}`, chartX + chartW - 2, refY - 1.5, { align: 'right' });
+  doc.text(`Cap. Optimista: ${money(capitalObjetivoOptimista)}`, chartX + chartW - 2, refYOpt - 1.5, { align: 'right' });
 
   // Legend at bottom
   const legendY = chartY + 10 + chartH + 8;
   doc.setFillColor(...GOLD);
-  doc.rect(M + 12, legendY, 3, 3, 'F');
+  doc.rect(M + 5, legendY, 3, 3, 'F');
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(5.5);
   doc.setTextColor(...MUTED);
-  doc.text('Patrimonio Proyectado Total', M + 17, legendY + 2.4);
+  doc.text('Patrimonio Proyectado', M + 10, legendY + 2.4);
 
   doc.setFillColor(59, 130, 246);
-  doc.rect(M + 62, legendY, 3, 3, 'F');
-  doc.text('Plan de Ahorro Acumulado', M + 67, legendY + 2.4);
+  doc.rect(M + 45, legendY, 3, 3, 'F');
+  doc.text('Ahorro Acumulado', M + 50, legendY + 2.4);
 
-  doc.setFillColor(...RED);
-  doc.rect(M + 112, legendY, 3, 0.6, 'F');
-  doc.text('Capital Objetivo Estimado', M + 117, legendY + 2.4);
+  doc.setFillColor(249, 115, 22); // Orange
+  doc.rect(M + 85, legendY, 3, 0.6, 'F');
+  doc.text('Cap. Central', M + 90, legendY + 2.4);
+
+  doc.setFillColor(...RED); // Red
+  doc.rect(M + 120, legendY, 3, 0.6, 'F');
+  doc.text('Cap. Optimista', M + 125, legendY + 2.4);
 
   state.y += chartH + 28; // Espaciado posterior
 }
@@ -652,9 +669,9 @@ async function generatePdf() {
     { num: '6', name: 'Fallecimiento y Protección Familiar Sucesoria', page: '6' },
     { num: '7', name: 'Planificación de Jubilación en Tres Escenarios', page: '6' },
     { num: '8', name: 'Proyección del Patrimonio Integral a los 67 años', page: '7' },
-    { num: '9', name: 'Niveles de Seguridad y Vulnerabilidad por Áreas', page: '7' },
-    { num: '10', name: 'Plan de Acción Priorizado y Medidas de Blindaje', page: '8' },
-    { num: '11', name: 'Análisis Cualitativo y Conclusión Estratégica', page: '9' }
+    { num: '9', name: 'Niveles de Seguridad y Vulnerabilidad por Áreas', page: '8' },
+    { num: '10', name: 'Plan de Acción Priorizado y Medidas de Blindaje', page: '10' },
+    { num: '11', name: 'Análisis Cualitativo y Conclusión Estratégica', page: '11' }
   ];
 
   ensureSpace(doc, state, 90);
@@ -789,7 +806,7 @@ async function generatePdf() {
     ['Salario Neto Ordinario', `${money(formData.salarioNetoMensual)} / mes`, 'Verificado', 'Límite de capacidad familiar fáctica'],
     ['Dinero en Banco (Líquido)', money(formData.dineroBanco), 'Verificado', 'Colchón primario de emergencias'],
     ['Patrimonio Inmobiliario', money(formData.valorInmuebles), 'Verificado', 'Valor de tasación de activos fijos'],
-    ['Destino de Rentas Inmobiliarias', formData.destinoRentasInmobiliarias.toUpperCase(), 'Pendiente', 'Afecta proyección de jubilación prudente']
+    ['Destino de Rentas Inmobiliarias', formData.destinoRentasInmobiliarias.toUpperCase(), formData.destinoRentasInmobiliarias !== 'desconocido' ? 'Verificado' : 'Pendiente', 'Afecta proyección de jubilación prudente']
   ];
   drawTable(doc, state, ['DATO DE LA AUDITORÍA', 'VALOR REGISTRADO', 'ESTADO', 'OBSERVACIÓN DEL ASESOR'], [50, 42, 25, 65], clientRows);
 
@@ -841,6 +858,112 @@ async function generatePdf() {
     ['left', 'right', 'center', 'right', 'right', 'center']
   );
 
+  // Summary cards for Section 3
+  state.y += 6;
+  ensureSpace(doc, state, 18);
+  const cardY = state.y;
+  const cardW = 43.25;
+  const cardH = 14;
+  const gap = 3;
+
+  // Card 1: CAPACIDAD AHORRO REAL
+  doc.setFillColor(...LIGHT);
+  doc.setDrawColor(...BORDER);
+  doc.roundedRect(M, cardY, cardW, cardH, 1.2, 1.2, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(4.5);
+  doc.setTextColor(...MUTED);
+  const c1X = M + (cardW / 2);
+  doc.text('CAPACIDAD AHORRO REAL', c1X, cardY + 4.5, { align: 'center' });
+  doc.setFontSize(8.0);
+  doc.setTextColor(...BLACK);
+  doc.text(money(metrics.savingsCapacity.sinRentas), c1X, cardY + 10.5, { align: 'center' });
+
+  // Card 2: ESFUERZO MENSUAL FINANCIERO
+  const totalObjMonthly = projects.reduce((sum: number, p: any) => {
+    if (p.aportacionFinanciera !== undefined) return sum + p.aportacionFinanciera;
+    const years = Number(p.years || 1);
+    const target = Number(p.target || 0);
+    const r = 0.05 / 12;
+    const financiera = (target * r) / (Math.pow(1 + r, years * 12) - 1);
+    return sum + financiera;
+  }, 0);
+
+  doc.setFillColor(...LIGHT);
+  doc.setDrawColor(...BORDER);
+  doc.roundedRect(M + cardW + gap, cardY, cardW, cardH, 1.2, 1.2, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(4.5);
+  doc.setTextColor(...MUTED);
+  const c2X = M + cardW + gap + (cardW / 2);
+  doc.text('ESFUERZO MENSUAL FINANCIERO', c2X, cardY + 4.5, { align: 'center' });
+  doc.setFontSize(8.0);
+  doc.setTextColor(...BLACK);
+  doc.text(money(totalObjMonthly), c2X, cardY + 10.5, { align: 'center' });
+
+  // Card 3: ESFUERZO MENSUAL LINEAL
+  const totalObjLineal = projects.reduce((sum: number, p: any) => {
+    if (p.aportacionLineal !== undefined) return sum + p.aportacionLineal;
+    const years = Number(p.years || 1);
+    const target = Number(p.target || 0);
+    const lineal = target / (years * 12);
+    return sum + lineal;
+  }, 0);
+
+  doc.setFillColor(...LIGHT);
+  doc.setDrawColor(...BORDER);
+  doc.roundedRect(M + (cardW + gap) * 2, cardY, cardW, cardH, 1.2, 1.2, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(4.5);
+  doc.setTextColor(...MUTED);
+  const c3X = M + (cardW + gap) * 2 + (cardW / 2);
+  doc.text('ESFUERZO MENSUAL LINEAL', c3X, cardY + 4.5, { align: 'center' });
+  doc.setFontSize(8.0);
+  doc.setTextColor(...BLACK);
+  doc.text(money(totalObjLineal), c3X, cardY + 10.5, { align: 'center' });
+
+  // Card 4: Estado Viabilidad (Viable, Inviable o Ajustado)
+  const ratio = totalObjMonthly > 0 ? (metrics.savingsCapacity.sinRentas / totalObjMonthly) : 1;
+  let statusText = "Viable";
+  let statusColor: any = GREEN; 
+  let statusBg: any = [240, 253, 250]; 
+  let statusBorder: any = [153, 246, 228]; 
+  if (totalObjMonthly === 0) {
+    statusText = "Sin Objetivos";
+    statusColor = SLATE;
+    statusBg = LIGHT;
+    statusBorder = BORDER;
+  } else if (ratio >= 1.0) {
+    statusText = "Viable";
+    statusColor = GREEN;
+    statusBg = [240, 253, 250];
+    statusBorder = [153, 246, 228];
+  } else if (ratio >= 0.7) {
+    statusText = "Ajustado";
+    statusColor = [255, 255, 255]; // white text
+    statusBg = [217, 119, 6]; // amber-600 background
+    statusBorder = [217, 119, 6]; // amber-600 border
+  } else {
+    statusText = "Inviable";
+    statusColor = RED; 
+    statusBg = [254, 242, 242]; 
+    statusBorder = [254, 202, 202]; 
+  }
+
+  doc.setFillColor(statusBg[0], statusBg[1], statusBg[2]);
+  doc.setDrawColor(statusBorder[0], statusBorder[1], statusBorder[2]);
+  doc.roundedRect(M + (cardW + gap) * 3, cardY, cardW, cardH, 1.2, 1.2, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(4.5);
+  doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+  const c4X = M + (cardW + gap) * 3 + (cardW / 2);
+  doc.text('ESTADO VIABILIDAD', c4X, cardY + 4.5, { align: 'center' });
+  doc.setFontSize(8.0);
+  doc.setTextColor(statusColor[0], statusColor[1], statusColor[2]);
+  doc.text(statusText.toUpperCase(), c4X, cardY + 10.5, { align: 'center' });
+
+  state.y += cardH + 4;
+
   // ==========================================
   // PAGE 5: AUDITORÍA DE PREVISIÓN SOCIAL (Fase 13.7 & 13.8)
   // ==========================================
@@ -849,14 +972,16 @@ async function generatePdf() {
   paragraph(doc, state, 'Las prestaciones públicas de la Seguridad Social española estimadas para cada contingencia del trabajador, comparadas frente al nivel fáctico de gastos familiares declarados.');
   sectionDivider(doc, state);
 
+  const isAutonomo = formData.regimenSeguridadSocial === "RETA (Autónomos)";
+
   const prevRows = [
-    ['Baja Laboral (enfermedad común, tramo 60%)', money(metrics.temporaryDisability.tramo60Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo60Brecha)}`, 'Media', 'Contratar subsidio privado'],
-    ['Baja Laboral (accidentes, tramo 75%)', money(metrics.temporaryDisability.tramo75Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo75Brecha)}`, 'Media', 'Suficiente solo en tramo largo'],
-    ['Invalidez Permanente Total habitual (IPT)', money(metrics.disability.iptMonto), money(metrics.expenses.total), `-${money(metrics.disability.iptBrecha)}`, 'Baja', 'Revisar capital por invalidez'],
-    ['Invalidez Permanente Absoluta total (IPA)', money(metrics.disability.ipaMonto), money(metrics.expenses.total), `-${money(metrics.disability.ipaBrecha)}`, 'Media', 'Cubierto parcialmente'],
-    ['Pensión de Viudedad (cónyuge computable)', money(metrics.survivorBenefits.viudedadMonto), money(metrics.expenses.total), `-${money(metrics.survivorBenefits.viudedadBrechaAislada)}`, 'Baja', 'Requiere seguro de vida'],
-    ['Pensión de Orfandad (todos los hijos)', money(metrics.survivorBenefits.orfandadMonto), 'N/A', 'N/A', 'Media', 'Subsidio complementario de estudios'],
-    ['Pensión de Jubilación Ordinaria previsible', money(metrics.retirementGap.pensionEstimada), money(metrics.expenses.total), `-${money(metrics.retirementGap.brechaMensual)}`, 'Media', 'Planificar ahorro indexado']
+    ['Baja Laboral (enfermedad común, tramo 60% B.R.)', money(metrics.temporaryDisability.tramo60Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo60Brecha)}`, 'Media', isAutonomo ? 'Contratar subsidio privado' : 'Cubierto por Régimen General'],
+    ['Baja Laboral (tramo 75% B.R.)', money(metrics.temporaryDisability.tramo75Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo75Brecha)}`, 'Media', 'Suficiente solo en tramo largo'],
+    ['Invalidez Permanente Total habitual (IPT, 55% B.R.)', money(metrics.disability.iptMonto), money(metrics.expenses.total), `-${money(metrics.disability.iptBrecha)}`, 'Baja', 'Revisar capital por invalidez'],
+    ['Invalidez Permanente Absoluta total (IPA, 100% B.R.)', money(metrics.disability.ipaMonto), money(metrics.expenses.total), `-${money(metrics.disability.ipaBrecha)}`, 'Media', 'Cubierto parcialmente'],
+    ['Pensión de Viudedad (cónyuge computable, 52% B.R.)', money(metrics.survivorBenefits.viudedadMonto), money(metrics.expenses.total), `-${money(metrics.survivorBenefits.viudedadBrechaAislada)}`, 'Baja', 'Requiere seguro de vida'],
+    ['Pensión de Orfandad (todos los hijos, 20% B.R. por hijo)', money(metrics.survivorBenefits.orfandadMonto), 'N/A', 'N/A', 'Media', 'Subsidio complementario de estudios'],
+    ['Pensión de Jubilación Ordinaria previsible (hasta 100% B.R.)', money(metrics.retirementGap.pensionEstimada), money(metrics.expenses.total), `-${money(metrics.retirementGap.brechaMensual)}`, 'Media', 'Planificar ahorro indexado']
   ];
   drawTable(
     doc,
@@ -958,6 +1083,9 @@ async function generatePdf() {
   drawTable(doc, state, ['COMPONENTE PATRIMONIAL', 'VALOR PROYECTADO', 'HIPÓTESIS Y COMENTARIOS'], [60, 42, 80], projRows);
 
   state.y += 4;
+  const optimisticScen = (retirementScenarios || []).find((s: any) => s.name === "Optimista");
+  const capitalObjetivoOptimista = optimisticScen ? optimisticScen.capitalNecesario : 0;
+
   drawPatrimonioProyectadoChart(
     doc,
     state,
@@ -970,7 +1098,8 @@ async function generatePdf() {
     formData.ahorroSistematicoMensual,
     formData.destinoRentasInmobiliarias,
     formData.rentasInmobiliariasMensualesNetas,
-    metrics.retirementGap.capitalObjetivo
+    metrics.retirementGap.capitalObjetivo,
+    capitalObjetivoOptimista
   );
 
   newPage(doc, state, 'Niveles de Seguridad');
@@ -979,15 +1108,73 @@ async function generatePdf() {
 
   const areaRows = [
     ['Fondo de Emergencia / Liquidez', `${scores.fondo}/10`, 'Colchón de seguridad líquido adecuado para transiciones.', 'Mantener liquidez controlada'],
-    ['Baja Laboral (Incapacidad Temporal)', `${scores.baja}/10`, 'Brecha inicial considerable en tramo del 60% por contingencia común.', 'Contratar subsidio privado'],
+    ['Baja Laboral (Incapacidad Temporal)', `${scores.baja}/10`, 'Brecha inicial considerable en tramo del 60% por contingencia común.', isAutonomo ? 'Contratar subsidio privado' : 'Sin acción (Régimen General)'],
     ['Incapacidad Permanente total/absoluta', `${scores.incapacidad}/10`, 'Déficit mensual superior a los 500 € frente a gastos corrientes.', 'Contratar seguro de incapacidad'],
-    ['Protección Familiar (Sucesos)', `${scores.familia}/10`, `Existe un déficit de protección de vida de ${money(metrics.familyNeed.deficitDeProteccion)}.`, 'Asegurar capital familiar objetivo'],
+    ['Protección Familiar (Decesos)', `${scores.familia}/10`, `Existe un déficit de protección de vida de ${money(metrics.familyNeed.deficitDeProteccion)}.`, 'Asegurar capital familiar objetivo'],
     ['Apalancamiento de Deuda', `${scores.deuda}/10`, `Ratio del ${percent(metrics.debt.ratioSobreSalario * 100)} dentro del límite saludable del 35%.`, 'Sin acción requerida inmediata'],
     ['Previsión de Jubilación de Retiro', `${scores.jubilacion}/10`, `Brecha de jubilación fáctica de ${money(metrics.retirementGap.brechaMensual)}/mes.`, 'Suscribir plan de ahorro indexado'],
     ['Patrimonio / Inflación', `${scores.inflacion}/10`, 'Inversiones acumuladas mitigan parcialmente el impacto inflacionario.', 'Revisar carteras diversificadas'],
     ['Orden Legal e Instrumental', `${scores.legal}/10`, 'Ausencia de testamento e inventario, lo que eleva el riesgo de herederos.', 'Formalizar actas notariales']
   ];
   drawTable(doc, state, ['ÁREA DE AUDITORÍA', 'PUNTOS', 'DIAGNÓSTICO ESTRATÉGICO', 'ACCIÓN RECOMENDADA'], [50, 18, 74, 40], areaRows);
+
+  // DETALLE DE RECOMENDACIONES (¿POR QUÉ SE SUGIERE ESTO?)
+  newPage(doc, state, 'Justificación de Propuestas');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...SLATE);
+  doc.text('JUSTIFICACIÓN DE PROPUESTAS (¿POR QUÉ SE SUGIERE ESTO?)', M, state.y);
+  state.y += 5;
+
+  const suggestions = [
+    {
+      title: '1. Reserva de Liquidez',
+      text: `Un fondo de reserva de entre 6 y 9 meses de gastos fijos (rango sugerido: ${money(metrics.expenses.total * 6)} - ${money(metrics.expenses.total * 9)}) asegura que puedas afrontar crisis empresariales, decesos o accidentes sobrevenidos sin endeudarte de forma perjudicial ni tener que liquidar de forma prematura otras inversiones a largo plazo.`
+    },
+    {
+      title: '2. Baja Laboral (Incapacidad Temporal)',
+      text: isAutonomo 
+        ? `Durante los primeros 3 días de baja por enfermedad común, el trabajador no percibe subsidio público. Del día 4 al 20, la Seguridad Social solo cubre el 60% de la base reguladora (un déficit de ${money(metrics.temporaryDisability.tramo60Brecha)}/mes frente a tus gastos fijos de ${money(metrics.expenses.total)}/mes). El seguro de subsidio privado cubre esta brecha crítica inicial para evitar tener que recurrir a tus ahorros de decesos o emergencia durante convalecencias.`
+        : `Bajo el Régimen General, las bajas laborales por incapacidad temporal suelen estar cubiertas en gran medida por la empresa y la Seguridad Social mediante el pago delegado, por lo que no existe la necesidad de contratar un complemento de subsidio privado ordinario, el cual se reserva especialmente para el colectivo de autónomos (RETA).`
+    },
+    {
+      title: '3. Protección Familiar (Decesos)',
+      text: `El capital objetivo recomendado de ${money(metrics.familyNeed.capitalFamiliarObjetivo)} se calcula sumando: amortización de deudas pendientes de ${money(metrics.familyNeed.detalles.deuda)}, gastos de transición inmediata de ${money(metrics.familyNeed.detalles.transicion)}, educación de tus ${formData.hijosMenores25 || 0} hijos de ${money(metrics.familyNeed.detalles.educacion)} (estimando 18.000 € por hijo para estudios superiores), y protección de rentas de ${money(metrics.familyNeed.detalles.rentaNecesaria)}. Al restar tu seguro de vida existente de ${money(formData.capitalSeguroVidaExistente || 0)}, resulta un déficit de protección de ${money(metrics.familyNeed.deficitDeProteccion)} que se sugiere cubrir.`
+    },
+    {
+      title: '4. Apalancamiento y Deuda',
+      text: `Las recomendaciones financieras y de control aconsejan no comprometer más del 35% de tus ingresos ordinarios netos en el servicio de la deuda mensual (cuota de ${money(metrics.debt.deudaMensualTotal)} sobre salario de ${money(formData.salarioNetoMensual)}). Mantener este ratio en ${percent(metrics.debt.ratioSobreSalario * 100)} asegura la sostenibilidad de las finanzas familiares.`
+    },
+    {
+      title: '5. Planificación de Jubilación',
+      text: `La jubilación pública cubrirá ${money(metrics.retirementGap.pensionEstimada)}/mes, generando una brecha de ${money(metrics.retirementGap.brechaMensual)}/mes frente a tus necesidades fácticas. Para cubrir este desfase durante más de 20 años de retiro, es vital acumular ${money(metrics.retirementGap.capitalObjetivo)} a los 67 años, lo cual se logra de forma cómoda y sistemática ahorrando ${money(metrics.retirementGap.recommendedSaving)}/mes en planes eficientes con interés compuesto.`
+    },
+    {
+      title: '6. Patrimonio y Rentas Inmobiliarias',
+      text: `Las rentas inmobiliarias de ${money(formData.rentasInmobiliariasMensualesNetas)}/mes son un activo pasivo extraordinario. Si se reinvierten de manera sistemática, potencian drásticamente el crecimiento de tu patrimonio neto proyectado (estimado en ${money(metrics.estate.projectedTotal)}). Tener patrimonio diversificado es la mejor defensa frente a la inflación económica.`
+    },
+    {
+      title: '7. Orden Legal y Sucesorio',
+      text: `La ausencia de testamento o poder preventivo expone a la familia a un proceso costoso y lento de declaración de herederos judiciales, bloqueo de cuentas corrientes y posibles sobrecostes de representación. Formalizar estas actas notariales cuesta menos de 150 € y otorga blindaje sucesorio y de representación legal inmediato.`
+    }
+  ];
+
+  suggestions.forEach((item) => {
+    const lines = doc.splitTextToSize(item.text, W - 6);
+    ensureSpace(doc, state, lines.length * 3.8 + 12);
+    
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...SLATE);
+    doc.text(item.title, M, state.y);
+    state.y += 3.8;
+    
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...MUTED);
+    doc.text(lines, M + 3, state.y);
+    state.y += lines.length * 3.6 + 4;
+  });
 
   // ==========================================
   // PAGE 8: PLAN DE ACCIÓN Y CIERRE
@@ -1049,16 +1236,16 @@ async function generatePdf() {
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.2);
   doc.setTextColor(...BLACK);
-  const p1 = `El pilar de protección de ingresos revela que, ante una situación de baja por incapacidad temporal por contingencia común, existe una desprotección considerable en el tramo inicial de la Seguridad Social. Durante los primeros 20 días de convalecencia, el subsidio público es de tan solo el 60% de la base reguladora, lo que genera un déficit inicial estimado de ${money(metrics.temporaryDisability.tramo60Brecha)}/mes frente a tus gastos mensuales fijos de ${money(metrics.expenses.total)}/mes. Recomendamos encarecidamente contratar un subsidio privado de baja laboral para complementar este tramo crítico. Asimismo, en supuestos graves de incapacidad permanente total (IPT) o absoluta (IPA), el desfase de ingresos respecto a tus compromisos presupuestarios podría cronificarse, por lo que sugerimos revisar o ampliar tus capitales asegurados por invalidez.`;
+  const p1 = `El pilar de protección de ingresos revela que, ante una situación de baja por incapacidad temporal por contingencia común, existe una desprotección en el tramo inicial de la Seguridad Social. Durante los primeros 20 días de convalecencia, el subsidio público es de tan solo el 60% de la base reguladora, lo que genera un déficit inicial estimado de ${money(metrics.temporaryDisability.tramo60Brecha)}/mes frente a tus gastos mensuales fijos de ${money(metrics.expenses.total)}/mes. ${isAutonomo ? 'Al estar en el régimen RETA (Autónomos), recomendamos encarecidamente contratar un subsidio privado de baja laboral para complementar este tramo crítico.' : 'Dado que te encuentras bajo el Régimen General, esta brecha suele estar amortiguada por la cobertura y convenios de la empresa, por lo que no es de aplicación necesaria un subsidio privado de baja laboral.'} Asimismo, en supuestos graves de incapacidad permanente total (IPT) o absoluta (IPA), el desfase de ingresos respecto a tus compromisos presupuestarios podría cronificarse, por lo que sugerimos revisar o ampliar tus capitales asegurados por invalidez.`;
   const p1Lines = doc.splitTextToSize(p1, W);
   doc.text(p1Lines, M, state.y);
   state.y += p1Lines.length * 3.8 + 12;
 
-  // Section 2: Protección Familiar y Sucesos
+  // Section 2: Protección Familiar y Decesos
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.2);
   doc.setTextColor(...SLATE);
-  doc.text('II. BLINDAJE Y PROTECCIÓN FAMILIAR (SUCESOS)', M, state.y);
+  doc.text('II. BLINDAJE Y PROTECCIÓN FAMILIAR (DECESOS)', M, state.y);
   state.y += 4.5;
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.2);

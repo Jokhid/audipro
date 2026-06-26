@@ -244,18 +244,7 @@ export default function App() {
     );
   };
 
-  // Exposing to global scope for professional-audit-pdf-v3 integration
-  useEffect(() => {
-    (window as any).currentAuditData = {
-      formData,
-      projects: goals.map(g => ({ name: g.name, target: g.target, years: g.years, monthly: g.target / (g.years * 12), status: savingsCapacity.sinRentas > 0 && (g.target / (g.years * 12)) <= savingsCapacity.sinRentas ? "Viable" : "Ajustado" })),
-      metrics,
-      scores,
-      warnings,
-      actionPlan,
-      retirementScenarios,
-    };
-  }, [formData, goals, metrics, scores, warnings, actionPlan, retirementScenarios, savingsCapacity]);
+
 
   // Syncing basic fields when expanded changes
   const updateField = (field: keyof ClientData, value: any) => {
@@ -306,11 +295,40 @@ export default function App() {
   }, [goals, savingsCapacity, formData]);
 
   const totalMonthlyGoalAhorro = goalRows.reduce((sum, g) => sum + g.aportacionFinanciera, 0);
+  const totalMonthlyGoalLineal = goalRows.reduce((sum, g) => sum + g.aportacionLineal, 0);
   const globalGoalStatus = savingsCapacity.sinRentas >= totalMonthlyGoalAhorro ? "Viable" : "Ajustado";
+
+  const globalGoalStatusDetail = useMemo(() => {
+    if (totalMonthlyGoalAhorro === 0) return { label: "Sin objetivos", color: "slate" };
+    const ratio = savingsCapacity.sinRentas / totalMonthlyGoalAhorro;
+    if (ratio >= 1.0) {
+      return { label: "Viable", color: "green" };
+    } else if (ratio >= 0.7) {
+      return { label: "Ajustado", color: "yellow" };
+    } else {
+      return { label: "Inviable", color: "red" };
+    }
+  }, [savingsCapacity.sinRentas, totalMonthlyGoalAhorro]);
+
+  // Exposing to global scope for professional-audit-pdf-v3 integration
+  useEffect(() => {
+    (window as any).currentAuditData = {
+      formData,
+      projects: goalRows,
+      metrics,
+      scores,
+      warnings,
+      actionPlan,
+      retirementScenarios,
+    };
+  }, [formData, goalRows, metrics, scores, warnings, actionPlan, retirementScenarios]);
 
   // Recharts projections
   const projectionChartData = useMemo(() => {
     const years = Math.max(15, 67 - formData.edad);
+    const optimisticScenario = retirementScenarios.find(s => s.name === "Optimista");
+    const capitalOptimista = optimisticScenario ? optimisticScenario.capitalNecesario : 0;
+
     return Array.from({ length: years + 1 }, (_, i) => {
       const currentAge = formData.edad + i;
       const invRate = (formData.rentabilidadInversion || 5) / 100;
@@ -331,10 +349,11 @@ export default function App() {
         edad: currentAge,
         "Patrimonio Financiero": Math.round(total),
         "Ahorro Acumulado": Math.round(savingAcc),
-        "Capital Objetivo": Math.round(retirementGap.capitalObjetivo)
+        "Capital Objetivo": Math.round(retirementGap.capitalObjetivo),
+        "Capital Objetivo Optimista": Math.round(capitalOptimista)
       };
     });
-  }, [formData, retirementGap]);
+  }, [formData, retirementGap, retirementScenarios]);
 
   // Quality assessment (Bloque Calidad del Diagnóstico)
   const dataQuality = useMemo(() => {
@@ -510,10 +529,14 @@ export default function App() {
                   </div>
                 </div>
                 <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                  <strong>Recomendación:</strong> Cobertura suficiente solo en el tramo del 75%. Se recomienda subsidio privado de baja laboral para complementar los primeros 20 días.
+                  <strong>Recomendación:</strong> {formData.regimenSeguridadSocial === "RETA (Autónomos)" 
+                    ? "Cobertura suficiente solo en el tramo del 75%. Se recomienda subsidio privado de baja laboral para complementar los primeros 20 días." 
+                    : "Bajo el Régimen General, las bajas por enfermedad están cubiertas mediante pago delegado por la empresa, por lo que no es de aplicación necesaria un subsidio privado de baja laboral."}
                 </p>
                 <div className="mt-1.5 text-[11px] text-slate-800 bg-yellow-100/60 p-2.5 border-l-2 border-yellow-500 rounded-r leading-relaxed">
-                  <strong>¿Por qué se sugiere esto?</strong> Durante los primeros 3 days de baja por enfermedad común, el trabajador no percibe subsidio público. Del día 4 al 20, la Seguridad Social solo cubre el 60% de la base reguladora (un déficit de <strong>{formatCurrency(temporaryDisability.tramo60Brecha)}/mes</strong> frente a tus gastos fijos de <strong>{formatCurrency(expenses.total)}/mes</strong>). El seguro de subsidio privado cubre esta brecha crítica inicial para evitar tener que recurrir a tus ahorros de emergencia durante convalecencias.
+                  <strong>¿Por qué se sugiere esto?</strong> {formData.regimenSeguridadSocial === "RETA (Autónomos)" 
+                    ? `Durante los primeros 3 days de baja por enfermedad común, el trabajador no percibe subsidio público. Del día 4 al 20, la Seguridad Social solo cubre el 60% de la base reguladora (un déficit de ${formatCurrency(temporaryDisability.tramo60Brecha)}/mes frente a tus gastos fijos de ${formatCurrency(expenses.total)}/mes). El seguro de subsidio privado cubre esta brecha crítica inicial para evitar tener que recurrir a tus ahorros de emergencia durante convalecencias.`
+                    : `En el Régimen General, las contingencias comunes e incapacidad temporal están cubiertas mayormente por el empleador y el sistema público de cotización delegada, haciendo innecesaria la contratación de un complemento de subsidio privado ordinario.`}
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
                   <span>Prioridad: <strong className="text-red-500 font-bold uppercase">Alta</strong></span>
@@ -525,7 +548,7 @@ export default function App() {
               <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="font-bold text-slate-900 text-sm uppercase text-[#C5A566]">2. Protección Familiar (Sucesos)</h3>
+                    <h3 className="font-bold text-slate-900 text-sm uppercase text-[#C5A566]">2. Protección Familiar (Decesos)</h3>
                     <p className="text-xs text-slate-500">Escenario conjunto de viudedad y orfandad</p>
                   </div>
                   <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
@@ -917,12 +940,16 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
+                    <NumberInput label="Rentabilidad Ahorro Sist. (%)" value={formData.rentabilidadAhorroSistematico} onChange={v => updateField("rentabilidadAhorroSistematico", v)} />
                     <NumberInput label="Valor Inmuebles (€)" value={formData.valorInmuebles} onChange={v => updateField("valorInmuebles", v)} />
-                    <NumberInput label="Renta Inmueble Bruta (€)" value={formData.rentasInmobiliariasMensualesBrutas} onChange={v => updateField("rentasInmobiliariasMensualesBrutas", v)} />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
+                    <NumberInput label="Renta Inmueble Bruta (€)" value={formData.rentasInmobiliariasMensualesBrutas} onChange={v => updateField("rentasInmobiliariasMensualesBrutas", v)} />
                     <NumberInput label="Renta Inmueble Neta (€)" value={formData.rentasInmobiliariasMensualesNetas} onChange={v => updateField("rentasInmobiliariasMensualesNetas", v)} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
                     <SelectInput 
                       label="Destino de Rentas" 
                       value={formData.destinoRentasInmobiliarias} 
@@ -1120,10 +1147,49 @@ export default function App() {
             </table>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
-            <Metric label="Capacidad Ahorro Real" value={`${formatCurrency(savingsCapacity.sinRentas)} / mes`} />
-            <Metric label="Esfuerzo Mensual Financiero" value={`${formatCurrency(totalMonthlyGoalAhorro)} / mes`} />
-            <Metric label="Estado de Viabilidad Global" value={globalGoalStatus} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
+            {/* Tarjeta 1: CAPACIDAD AHORRO REAL */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm text-center">
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Capacidad Ahorro Real</p>
+              <p className="mt-2 text-xl font-black text-slate-800">{formatCurrency(savingsCapacity.sinRentas)}</p>
+              <p className="mt-1 text-[11px] text-slate-500">Capacidad de ahorro fáctica calculada</p>
+            </div>
+
+            {/* Tarjeta 2: ESFUERZO MENSUAL FINANCIERO */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm text-center">
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Esfuerzo Mensual Financiero</p>
+              <p className="mt-2 text-xl font-black text-[#C5A566]">{formatCurrency(totalMonthlyGoalAhorro)}</p>
+              <p className="mt-1 text-[11px] text-slate-500">Aportación financiera mensual requerida</p>
+            </div>
+
+            {/* Tarjeta 3: ESFUERZO MENSUAL LINEAL */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 shadow-sm text-center">
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Esfuerzo Mensual Lineal</p>
+              <p className="mt-2 text-xl font-black text-slate-700">{formatCurrency(totalMonthlyGoalLineal)}</p>
+              <p className="mt-1 text-[11px] text-slate-500">Aportación lineal requerida (sin rentabilidad)</p>
+            </div>
+
+            {/* Tarjeta 4: VIABLE, INVIABLE O AJUSTADO */}
+            <div className={`rounded-xl border p-5 shadow-sm transition-all duration-300 text-center ${
+              globalGoalStatusDetail.color === "green" ? "bg-emerald-50 border-emerald-200 text-emerald-900" :
+              globalGoalStatusDetail.color === "yellow" ? "bg-amber-500 border-amber-600 text-white" :
+              globalGoalStatusDetail.color === "red" ? "bg-red-50 border-red-200 text-red-900" :
+              "bg-slate-50 border-slate-200 text-slate-900"
+            }`}>
+              <p className={`text-[10px] font-black uppercase tracking-wider ${
+                globalGoalStatusDetail.color === "green" ? "text-emerald-600" :
+                globalGoalStatusDetail.color === "yellow" ? "text-amber-100" :
+                globalGoalStatusDetail.color === "red" ? "text-red-600" :
+                "text-slate-400"
+              }`}>Estado de viabilidad</p>
+              <p className="mt-2 text-xl font-black">{globalGoalStatusDetail.label}</p>
+              <p className="mt-1 text-[11px] opacity-85">
+                {globalGoalStatusDetail.color === "green" ? "La capacidad de ahorro cubre holgadamente los objetivos." :
+                 globalGoalStatusDetail.color === "yellow" ? "Capacidad ajustada. Considere optimizar gastos." :
+                 globalGoalStatusDetail.color === "red" ? "Capacidad insuficiente para cubrir las metas planteadas." :
+                 "No se han añadido objetivos de ahorro."}
+              </p>
+            </div>
           </div>
         </section>
 
@@ -1206,7 +1272,8 @@ export default function App() {
                   <Legend />
                   <Area dataKey="Patrimonio Financiero" name="Patrimonio Proyectado" stroke={brand.gold} fill={brand.gold} fillOpacity={0.15} />
                   <Area dataKey="Ahorro Acumulado" name="Plan de Ahorro Acumulado" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.05} />
-                  <Line dataKey="Capital Objetivo" name="Línea Capital Objetivo" stroke={brand.red} strokeDasharray="6 6" dot={false} />
+                  <Line dataKey="Capital Objetivo" name="Línea Capital Objetivo Central" stroke={brand.orange} strokeDasharray="6 6" dot={false} strokeWidth={1.5} />
+                  <Line dataKey="Capital Objetivo Optimista" name="Línea Capital Objetivo Optimista" stroke={brand.red} strokeDasharray="4 4" dot={false} strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

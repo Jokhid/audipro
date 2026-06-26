@@ -268,15 +268,25 @@ export function calculateRetirementScenarios(data: ClientData, totalExpenses: nu
   };
 
   const rateCentral = calculateRate(anosCotizadosProyectados);
-  const pensionCentral = base * rateCentral;
+  
+  // En España, la base reguladora se estima dividiendo las bases de cotización de los últimos 25 años por 350 (aprox. el 85.7% de la base mensual actual).
+  // La pensión está sujeta al IRPF (estimación del 15% medio de retención para pensiones medias/altas), calculando la pensión neta mensual real.
+  const baseReguladora = base * (300 / 350);
+  
+  const pensionCentralGross = baseReguladora * rateCentral;
+  const pensionCentralNet = Math.round(pensionCentralGross * 0.85);
 
-  // Escenario Conservador: Hipótesis de lagunas de cotización o prejubilación forzada
   const anosCotizadosConservador = Math.max(yearsCotizados, Math.round(anosCotizadosProyectados * 0.8));
   const rateConservador = calculateRate(anosCotizadosConservador);
-  const pensionConservador = (base * 0.85) * rateConservador;
+  const pensionConservadorGross = (baseReguladora * 0.85) * rateConservador;
+  const pensionConservadorNet = Math.round(pensionConservadorGross * 0.85);
 
-  // Escenario Optimista: Continuidad absoluta con bases ascendentes
-  const pensionOptimista = (base * 1.15) * Math.max(1.0, calculateRate(anosCotizadosProyectados + 2));
+  const pensionOptimistaGross = (baseReguladora * 1.15) * Math.max(1.0, calculateRate(anosCotizadosProyectados + 2));
+  const pensionOptimistaNet = Math.round(pensionOptimistaGross * 0.85);
+
+  // Para mantener el nivel de vida, el gasto de referencia se basa en mantener los ingresos netos ordinarios actuales (tasa de reemplazo) o cubrir gastos fijos holgadamente.
+  const salarioNeto = Number(data.salarioNetoMensual || totalExpenses || 2400);
+  const gastoReferenciaCentral = Math.max(totalExpenses, salarioNeto);
 
   return [
     {
@@ -287,12 +297,12 @@ export function calculateRetirementScenarios(data: ClientData, totalExpenses: nu
       anosCotizadosActuales: yearsCotizados,
       anosCotizadosProyectados: anosCotizadosConservador,
       porcentajeEstimado: rateConservador * 100,
-      pensionEstimada: pensionConservador,
-      gastoReferencia: totalExpenses * 1.1, // ligeramente mayor por inflación o gastos médicos
-      brecha: Math.max(0, (totalExpenses * 1.1) - pensionConservador),
-      capitalNecesario: Math.max(0, (totalExpenses * 1.1) - pensionConservador) * 12 * 23,
+      pensionEstimada: pensionConservadorNet,
+      gastoReferencia: Math.round(gastoReferenciaCentral * 1.1),
+      brecha: Math.max(0, Math.round(gastoReferenciaCentral * 1.1) - pensionConservadorNet),
+      capitalNecesario: Math.max(0, Math.round(gastoReferenciaCentral * 1.1) - pensionConservadorNet) * 12 * 23,
       fiabilidad: "Baja",
-      hipotesis: "Lagunas de cotización futuras o prejubilación con bases de cotización reducidas en un 15%."
+      hipotesis: "Lagunas de cotización futuras, base de cotización reducida e impacto de la inflación acumulada del 10% en gastos."
     },
     {
       name: "Central",
@@ -302,12 +312,12 @@ export function calculateRetirementScenarios(data: ClientData, totalExpenses: nu
       anosCotizadosActuales: yearsCotizados,
       anosCotizadosProyectados,
       porcentajeEstimado: rateCentral * 100,
-      pensionEstimada: pensionCentral,
-      gastoReferencia: totalExpenses,
-      brecha: Math.max(0, totalExpenses - pensionCentral),
-      capitalNecesario: Math.max(0, totalExpenses - pensionCentral) * 12 * 23,
+      pensionEstimada: pensionCentralNet,
+      gastoReferencia: gastoReferenciaCentral,
+      brecha: Math.max(0, gastoReferenciaCentral - pensionCentralNet),
+      capitalNecesario: Math.max(0, gastoReferenciaCentral - pensionCentralNet) * 12 * 23,
       fiabilidad: "Media",
-      hipotesis: "Continuidad laboral ininterrumpida manteniendo la base de cotización actual hasta los 67 años."
+      hipotesis: "Continuidad laboral manteniendo la base actual, con pensión neta estimada tras un 15% de IRPF medio."
     },
     {
       name: "Optimista",
@@ -317,12 +327,12 @@ export function calculateRetirementScenarios(data: ClientData, totalExpenses: nu
       anosCotizadosActuales: yearsCotizados,
       anosCotizadosProyectados: Math.max(37, anosCotizadosProyectados),
       porcentajeEstimado: Math.max(1.0, rateCentral) * 100,
-      pensionEstimada: pensionOptimista,
-      gastoReferencia: totalExpenses * 0.9, // menor consumo de jubilado por amortización total de vivienda
-      brecha: Math.max(0, (totalExpenses * 0.9) - pensionOptimista),
-      capitalNecesario: Math.max(0, (totalExpenses * 0.9) - pensionOptimista) * 12 * 23,
+      pensionEstimada: pensionOptimistaNet,
+      gastoReferencia: Math.round(gastoReferenciaCentral * 1.2), // Estilo de vida premium en retiro (viajes, ocio, etc.)
+      brecha: Math.max(0, Math.round(gastoReferenciaCentral * 1.2) - pensionOptimistaNet),
+      capitalNecesario: Math.max(0, Math.round(gastoReferenciaCentral * 1.2) - pensionOptimistaNet) * 12 * 23,
       fiabilidad: "Alta",
-      hipotesis: "Crecimiento profesional con bases de cotización un 15% superiores y cotización máxima consolidada."
+      hipotesis: "Crecimiento profesional y base reguladora un 15% superior, proyectando un nivel de gastos premium (120%)."
     }
   ];
 }
@@ -334,8 +344,15 @@ export function calculateRetirementGap(
   rentasNetasDisponibles: number,
   totalExpenses: number
 ) {
-  const gastoJubilacionReferencia = totalExpenses;
-  const ingresosJubilacion = pensionEstimada + rentasNetasDisponibles + Number(data.otrosIngresosNetos || 0);
+  const salarioNeto = Number(data.salarioNetoMensual || totalExpenses || 2400);
+  const gastoJubilacionReferencia = Math.max(totalExpenses, salarioNeto);
+
+  // Si las rentas inmobiliarias se destinan a reinversión, no reducen la brecha de gasto de jubilación ya que se acumulan en el patrimonio general.
+  const rentasConsumibles = (data.destinoRentasInmobiliarias === "consumo" || data.destinoRentasInmobiliarias === "mixto")
+    ? rentasNetasDisponibles
+    : 0;
+
+  const ingresosJubilacion = pensionEstimada + rentasConsumibles + Number(data.otrosIngresosNetos || 0);
   const brechaMensual = Math.max(0, gastoJubilacionReferencia - ingresosJubilacion);
   const targetCapital = brechaMensual * 12 * 23; // esperanza de vida 90 años fijos
 
@@ -354,7 +371,7 @@ export function calculateRetirementGap(
   return {
     gastoReferencia: gastoJubilacionReferencia,
     pensionEstimada,
-    rentasConsideradas: rentasNetasDisponibles,
+    rentasConsideradas: rentasConsumibles,
     otrosIngresos: Number(data.otrosIngresosNetos || 0),
     brechaMensual,
     añosRetiro: 23,
@@ -617,7 +634,9 @@ export function generateActionPlan(data: ClientData, metrics: any) {
     });
   }
 
-  if (metrics.temporaryDisability.tramo60Brecha > 0 || metrics.temporaryDisability.tramo75Brecha > 0) {
+  const isAutonomo = data.regimenSeguridadSocial === "RETA (Autónomos)";
+
+  if (isAutonomo && (metrics.temporaryDisability.tramo60Brecha > 0 || metrics.temporaryDisability.tramo75Brecha > 0)) {
     steps.push({
       step: "Contratación de Seguro de Subsidio por Incapacidad Temporal",
       priority: "Alta",
