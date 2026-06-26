@@ -17,7 +17,8 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle as QuestionIcon,
-  ChevronRight
+  ChevronRight,
+  Info
 } from "lucide-react";
 import { 
   Area, 
@@ -1189,6 +1190,13 @@ export default function App() {
                  globalGoalStatusDetail.color === "red" ? "Capacidad insuficiente para cubrir las metas planteadas." :
                  "No se han añadido objetivos de ahorro."}
               </p>
+            </div>
+          </div>
+
+          <div className="mt-4 text-[11px] text-slate-500 bg-slate-50/80 rounded-lg p-3.5 border border-slate-150 flex items-start gap-2.5 shadow-sm">
+            <Info className="h-4 w-4 text-[#C5A566] shrink-0 mt-0.5" />
+            <div className="leading-relaxed text-left">
+              <strong>Aclaración sobre el Tipo de Interés Aplicado:</strong> Para calcular la aportación mensual requerida en el <strong>Esfuerzo Mensual Financiero</strong>, capitalizamos los fondos según la prioridad del objetivo. Las metas con prioridad <strong className="text-red-600">Alta</strong> se capitalizan con el tipo de interés del plan de ahorro sistemático configurado (<strong>{formData.rentabilidadAhorroSistematico || 6}%</strong> anual compuesto). Los objetivos de prioridad <strong className="text-amber-600">Media</strong> o <strong className="text-slate-600">Baja</strong> aplican una tasa prudencial conservadora del <strong>2%</strong> anual compuesto, minimizando riesgos para plazos más cortos.
             </div>
           </div>
         </section>

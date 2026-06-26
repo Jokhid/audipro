@@ -284,7 +284,7 @@ function drawRetirementChart(
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(5.5);
   doc.setTextColor(...RED);
-  doc.text(`Gastos Ref: ${money(referenceValue)}`, chartX + chartW - 2, refY - 1, { align: 'right' });
+  doc.text(`Gasto de Referencia: ${money(referenceValue)}`, chartX + chartW - 2, refY - 1, { align: 'right' });
 
   // Legend at bottom
   const legendY = chartY + 10 + chartH + 8;
@@ -986,8 +986,8 @@ async function generatePdf() {
   drawTable(
     doc,
     state,
-    ['CONTINGENCIA S.S.', 'ESTIMACIÓN', 'GASTO REF.', 'BRECHA MENSUAL', 'FIABILIDAD', 'ACCIÓN RECOMENDADA'],
-    [50, 24, 22, 28, 20, 38],
+    ['CONTINGENCIA S.S.', 'ESTIMACIÓN', 'GASTO DE REFERENCIA', 'BRECHA MENSUAL', 'FIABILIDAD', 'ACCIÓN RECOMENDADA'],
+    [42, 24, 30, 28, 20, 38],
     prevRows,
     ['left', 'right', 'right', 'right', 'center', 'left'],
     true
@@ -1044,8 +1044,8 @@ async function generatePdf() {
   drawTable(
     doc,
     state,
-    ['ESCENARIO', 'PENSIÓN S.S.', 'RENTAS INMOB.', 'GASTO REF.', 'BRECHA MENSUAL', 'CAPITAL NECESARIO', 'AHORRO RECOM.'],
-    [24, 25, 25, 22, 28, 33, 25],
+    ['ESCENARIO', 'PENSIÓN S.S.', 'RENTAS INMOB.', 'GASTO DE REFERENCIA', 'BRECHA MENSUAL', 'CAPITAL NECESARIO', 'AHORRO RECOM.'],
+    [20, 24, 24, 30, 26, 33, 25],
     scenRows,
     ['left', 'right', 'right', 'right', 'right', 'right', 'right']
   );
@@ -1059,7 +1059,7 @@ async function generatePdf() {
   drawRetirementChart(
     doc,
     state,
-    'ESTUDIO COMPARATIVO DE INGRESOS MENSUALES JUBILADOS VS GASTO REF.',
+    'ESTUDIO COMPARATIVO DE INGRESOS MENSUALES JUBILADOS VS GASTO DE REFERENCIA',
     scens,
     metrics.expenses.total
   );
