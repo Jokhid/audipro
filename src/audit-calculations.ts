@@ -20,7 +20,9 @@ export function formatRiskLevel(sev: "grave" | "moderada" | "leve"): string {
 // 1. Gasto mensual total
 export function calculateMonthlyExpenses(data: ClientData) {
   const personal = Number(data.gastoMensualPersonal || data.gastosMensuales || 0);
-  const housing = Number(data.cuotaHipoteca || 0) + Number(data.cuotaPrestamos || 0) + Number(data.cuotaTarjetas || 0) || Number(data.viviendaPrestamosMensual || data.alquilerHipotecaPrestamos || 0);
+  const rentOrMortgage = Number(data.cuotaHipoteca || data.viviendaPrestamosMensual || data.alquilerHipotecaPrestamos || 0);
+  const loansAndCards = Number(data.cuotaPrestamos || 0) + Number(data.cuotaTarjetas || 0);
+  const housing = rentOrMortgage + loansAndCards;
   const realEstate = Number(data.gastosInmobiliariosMensuales || 0);
   const total = personal + housing + realEstate;
   return { personal, housing, realEstate, total };

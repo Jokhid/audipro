@@ -47,7 +47,7 @@ function footer(doc: jsPDF, page: number) {
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(140, 140, 140);
-  doc.text('Informe de Auditoría Patrimonial Certificada. Confidencial y personalizado.', 14, 287);
+  doc.text('Informe de Auditoría Patrimonial. Confidencial y personalizado.', 14, 287);
   doc.text(`Página ${page}`, 196, 287, { align: 'right' });
 }
 
@@ -73,17 +73,17 @@ function heading(doc: jsPDF, state: PageState, text: string, size = 11) {
   doc.setFontSize(size);
   doc.setTextColor(...SLATE);
   doc.text(text.toUpperCase(), M, state.y);
-  state.y += size * 0.4 + 4;
+  state.y += size * 0.4 + 5;
 }
 
 function paragraph(doc: jsPDF, state: PageState, text: string, size = 8.2) {
   const lines = doc.splitTextToSize(clean(text), W) as string[];
-  ensureSpace(doc, state, lines.length * 4.2 + 5);
+  ensureSpace(doc, state, lines.length * 4.2 + 9);
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(size);
   doc.setTextColor(...MUTED);
   doc.text(lines, M, state.y);
-  state.y += lines.length * 4.2 + 4;
+  state.y += lines.length * 4.2 + 8;
 }
 
 function sectionDivider(doc: jsPDF, state: PageState) {
@@ -439,7 +439,7 @@ async function generatePdf() {
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...GOLD);
-  doc.text('Consultor de Previsión Social e Intermediario Hipotecario Certificado', 105, 236, { align: 'center' });
+  doc.text('Gestión Patrimonial e Hipotecaria', 105, 236, { align: 'center' });
   doc.setTextColor(...MUTED);
   doc.text('Email: josecarlos@hilolegal.es   |   Teléfono: 647 50 60 40', 105, 242, { align: 'center' });
 
@@ -451,10 +451,10 @@ async function generatePdf() {
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(5);
   doc.setTextColor(...BLACK);
-  doc.text('CERTIFICADA', 105, 263.5, { align: 'center' });
+  doc.text('AUDITORÍA', 105, 263.5, { align: 'center' });
   doc.setFontSize(4.5);
   doc.setTextColor(...GOLD);
-  doc.text('OFICIAL', 105, 266.5, { align: 'center' });
+  doc.text('PATRIMONIAL', 105, 266.5, { align: 'center' });
 
   // ==========================================
   // PAGE 2: ÍNDICE DE CONTENIDOS Y PRESENTACIÓN
@@ -841,72 +841,77 @@ async function generatePdf() {
   paragraph(doc, state, 'Análisis global personalizado de los diferentes pilares de la auditoría patrimonial con recomendaciones finales.');
   sectionDivider(doc, state);
 
-  ensureSpace(doc, state, 180);
+  ensureSpace(doc, state, 190);
 
   // Section 1: Previsión Social e Ingresos
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.2);
   doc.setTextColor(...SLATE);
   doc.text('I. PROTECCIÓN DE INGRESOS (BAJA LABORAL E INCAPACIDAD)', M, state.y);
-  state.y += 4;
+  state.y += 4.5;
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.2);
   doc.setTextColor(...BLACK);
   const p1 = `El pilar de protección de ingresos revela que, ante una situación de baja por incapacidad temporal por contingencia común, existe una desprotección considerable en el tramo inicial de la Seguridad Social. Durante los primeros 20 días de convalecencia, el subsidio público es de tan solo el 60% de la base reguladora, lo que genera un déficit inicial estimado de ${money(metrics.temporaryDisability.tramo60Brecha)}/mes frente a tus gastos mensuales fijos de ${money(metrics.expenses.total)}/mes. Recomendamos encarecidamente contratar un subsidio privado de baja laboral para complementar este tramo crítico. Asimismo, en supuestos graves de incapacidad permanente total (IPT) o absoluta (IPA), el desfase de ingresos respecto a tus compromisos presupuestarios podría cronificarse, por lo que sugerimos revisar o ampliar tus capitales asegurados por invalidez.`;
-  doc.text(doc.splitTextToSize(p1, W), M, state.y);
-  state.y += 28;
+  const p1Lines = doc.splitTextToSize(p1, W);
+  doc.text(p1Lines, M, state.y);
+  state.y += p1Lines.length * 3.8 + 12;
 
   // Section 2: Protección Familiar y Sucesos
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.2);
   doc.setTextColor(...SLATE);
   doc.text('II. BLINDAJE Y PROTECCIÓN FAMILIAR (SUCESOS)', M, state.y);
-  state.y += 4;
+  state.y += 4.5;
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.2);
   doc.setTextColor(...BLACK);
   const p2 = `El blindaje familiar frente a fallecimiento o invalidez requiere garantizar la estabilidad financiera de tus dependientes. El capital objetivo idóneo estimado asciende a ${money(metrics.familyNeed.capitalFamiliarObjetivo)}, desglosado en: amortización de tus deudas (${money(metrics.familyNeed.detalles.deuda)}), gastos de transición y sepelio (${money(metrics.familyNeed.detalles.transicion)}), fondos previstos para estudios de tus hijos (${money(metrics.familyNeed.detalles.educacion)}), y una renta familiar de transición de ${money(metrics.familyNeed.detalles.rentaNecesaria)} (equivalente a 10 años de brecha de vida). Tras restar el capital de vida que tienes contratado actualmente (${money(formData.capitalSeguroVidaExistente)}), resulta un déficit neto de protección familiar de ${money(metrics.familyNeed.deficitDeProteccion)}. Es prioritario incrementar tus seguros de vida vigentes para neutralizar este riesgo estructural.`;
-  doc.text(doc.splitTextToSize(p2, W), M, state.y);
-  state.y += 28;
+  const p2Lines = doc.splitTextToSize(p2, W);
+  doc.text(p2Lines, M, state.y);
+  state.y += p2Lines.length * 3.8 + 12;
 
   // Section 3: Liquidez y Apalancamiento de Deuda
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.2);
   doc.setTextColor(...SLATE);
   doc.text('III. LIQUIDEZ DE EMERGENCIA Y APALANCAMIENTO DE DEUDA', M, state.y);
-  state.y += 4;
+  state.y += 4.5;
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.2);
   doc.setTextColor(...BLACK);
   const p3 = `Dispones de una reserva de liquidez bancaria de ${money(formData.dineroBanco)}, equivalente a ${metrics.liquidity.mesesCubiertos.toFixed(1)} meses de gastos recurrentes fijos. Aunque te permite resolver incidencias cotidianas menores, aconsejamos consolidar de forma prioritaria un fondo equivalente a entre 6 y 9 meses de gastos fijos para blindar plenamente tu liquidez operativa. Por otro lado, tu servicio de deuda mensual de ${money(metrics.debt.deudaMensualTotal)} supone un ratio sobre tu salario neto ordinario del ${percent(metrics.debt.ratioSobreSalario * 100)}, situándose en una posición muy saludable y controlada, holgadamente por debajo del límite prudencial máximo aconsejado por las autoridades del 35%.`;
-  doc.text(doc.splitTextToSize(p3, W), M, state.y);
-  state.y += 24;
+  const p3Lines = doc.splitTextToSize(p3, W);
+  doc.text(p3Lines, M, state.y);
+  state.y += p3Lines.length * 3.8 + 12;
 
   // Section 4: Jubilación y Patrimonio
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.2);
   doc.setTextColor(...SLATE);
   doc.text('IV. PLANIFICACIÓN DE JUBILACIÓN, PATRIMONIO E INFLACIÓN', M, state.y);
-  state.y += 4;
+  state.y += 4.5;
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.2);
   doc.setTextColor(...BLACK);
   const p4 = `En el escenario central, tu jubilación pública previsible será de ${money(metrics.retirementGap.pensionEstimada)}/mes, lo que creará una brecha fáctica de retiro de ${money(metrics.retirementGap.brechaMensual)}/mes frente a tu presupuesto. Para mantener tu nivel de vida sin descapitalizarte durante 23 años de jubilación, debes acumular a los 67 años un capital de retiro objetivo de ${money(metrics.retirementGap.capitalObjetivo)}. Puedes lograrlo de forma progresiva ahorrando ${money(metrics.retirementGap.recommendedSaving)}/mes en una solución indexada eficiente que aproveche el interés compuesto. Tus rentas inmobiliarias netas (${money(formData.rentasInmobiliariasMensualesNetas)}/mes) representan un motor formidable; si las reinviertes sistemáticamente, impulsarán tu patrimonio total neto proyectado de jubilación hasta un estimado de ${money(metrics.estate.projectedTotal)}.`;
-  doc.text(doc.splitTextToSize(p4, W), M, state.y);
-  state.y += 28;
+  const p4Lines = doc.splitTextToSize(p4, W);
+  doc.text(p4Lines, M, state.y);
+  state.y += p4Lines.length * 3.8 + 12;
 
   // Section 5: Orden Legal y Sucesorio
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.2);
   doc.setTextColor(...SLATE);
   doc.text('V. BLINDAJE SUCESORIO Y ORDEN LEGAL', M, state.y);
-  state.y += 4;
+  state.y += 4.5;
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.2);
   doc.setTextColor(...BLACK);
   const p5 = `El análisis del orden legal revela áreas de vulnerabilidad importantes. La falta de testamento formal o poder preventivo notarial expone a tu familia a costes imprevistos de declaración de herederos judiciales, bloqueos provisionales de cuentas bancarias y potenciales disputas sucesorias. Se recomienda acudir al notario para protocolizar estas actas básicas, cuyo coste es insignificante y proporcionan un blindaje operativo y sucesorio inmediato.`;
-  doc.text(doc.splitTextToSize(p5, W), M, state.y);
-  state.y += 22;
+  const p5Lines = doc.splitTextToSize(p5, W);
+  doc.text(p5Lines, M, state.y);
+  state.y += p5Lines.length * 3.8 + 12;
 
   // Closing Note block
   ensureSpace(doc, state, 30);

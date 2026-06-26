@@ -263,7 +263,14 @@ export default function App() {
       const next = { ...prev, [field]: value };
       // Sync basic compatibility fields
       if (field === "gastoMensualPersonal") next.gastosMensuales = Number(value);
-      if (field === "viviendaPrestamosMensual") next.alquilerHipotecaPrestamos = Number(value);
+      if (field === "viviendaPrestamosMensual") {
+        next.alquilerHipotecaPrestamos = Number(value);
+        next.cuotaHipoteca = Number(value);
+      }
+      if (field === "cuotaHipoteca") {
+        next.viviendaPrestamosMensual = Number(value);
+        next.alquilerHipotecaPrestamos = Number(value);
+      }
       if (field === "anosCotizadosActuales") next.anosCotizados = Number(value);
       if (field === "baseCotizacionActual") next.baseCotizacion = Number(value);
       if (field === "ahorroSistematicoMensual") next.ahorroSistematico = Number(value);
@@ -749,9 +756,9 @@ export default function App() {
               {/* TAB 1: PERSONAL & FAMILIAR */}
               {activeTab === "personal" && (
                 <div className="space-y-4">
-                  <div className="p-3 bg-[#C5A566]/10 text-slate-700 text-xs rounded border border-[#C5A566]/20">
-                    <p className="font-bold text-[#A8833F]">¿Por qué preguntamos esto?</p>
-                    <p className="mt-1">La edad, estado civil y número de hijos definen el tramo impositivo, los derechos automáticos a pensión de viudedad/orfandad y la necesidad de capital familiar garantizado.</p>
+                  <div className="p-3 bg-[#C5A566] text-white text-xs rounded border border-[#C5A566]/20 shadow-sm">
+                    <p className="font-bold">¿Por qué preguntamos esto?</p>
+                    <p className="mt-1 text-white/90">La edad, estado civil y número de hijos definen el tramo impositivo, los derechos automáticos a pensión de viudedad/orfandad y la necesidad de capital familiar garantizado.</p>
                   </div>
                   <Input label="Nombre del Cliente" value={formData.nombre} onChange={v => updateField("nombre", v)} />
                   <Input label="Teléfono" value={formData.telefono} onChange={v => updateField("telefono", v)} />
@@ -787,9 +794,9 @@ export default function App() {
               {/* TAB 2: ECONOMICOS */}
               {activeTab === "economico" && (
                 <div className="space-y-4">
-                  <div className="p-3 bg-[#C5A566]/10 text-slate-700 text-xs rounded border border-[#C5A566]/20">
-                    <p className="font-bold text-[#A8833F]">¿Cómo afecta al diagnóstico?</p>
-                    <p className="mt-1">Define la capacidad neta de ahorro fáctica de la unidad familiar. Si el gasto real es superior al ingreso base, existe riesgo inminente de descapitalización.</p>
+                  <div className="p-3 bg-[#C5A566] text-white text-xs rounded border border-[#C5A566]/20 shadow-sm">
+                    <p className="font-bold">¿Cómo afecta al diagnóstico?</p>
+                    <p className="mt-1 text-white/90">Define la capacidad neta de ahorro fáctica de la unidad familiar. Si el gasto real es superior al ingreso base, existe riesgo inminente de descapitalización.</p>
                   </div>
                   <NumberInput label="Salario Neto Mensual (€)" value={formData.salarioNetoMensual} onChange={v => updateField("salarioNetoMensual", v)} />
                   <NumberInput label="Otros Ingresos Netos (€)" value={formData.otrosIngresosNetos} onChange={v => updateField("otrosIngresosNetos", v)} />
@@ -815,9 +822,9 @@ export default function App() {
               {/* TAB 3: DEUDA */}
               {activeTab === "deuda" && (
                 <div className="space-y-4">
-                  <div className="p-3 bg-[#C5A566]/10 text-slate-700 text-xs rounded border border-[#C5A566]/20">
-                    <p className="font-bold text-[#A8833F]">¿Qué ocurre si falta este dato?</p>
-                    <p className="mt-1">Si falta la deuda pendiente, el cálculo del "Capital Familiar Objetivo" de protección de fallecimiento aparecerá como pendiente de validar, subestimando la necesidad de vida.</p>
+                  <div className="p-3 bg-[#C5A566] text-white text-xs rounded border border-[#C5A566]/20 shadow-sm">
+                    <p className="font-bold">¿Qué ocurre si falta este dato?</p>
+                    <p className="mt-1 text-white/90">Si falta la deuda pendiente, el cálculo del "Capital Familiar Objetivo" de protección de fallecimiento aparecerá como pendiente de validar, subestimando la necesidad de vida.</p>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-2">
@@ -843,9 +850,9 @@ export default function App() {
               {/* TAB 4: PREVISIÓN SOCIAL */}
               {activeTab === "seguridad" && (
                 <div className="space-y-4">
-                  <div className="p-3 bg-[#C5A566]/10 text-slate-700 text-xs rounded border border-[#C5A566]/20">
-                    <p className="font-bold text-[#A8833F]">Rigor Técnico de Prestaciones</p>
-                    <p className="mt-1">La Seguridad Social de España calcula IT y Jubilación basándose en bases reguladoras reales, cotizaciones e hipótesis que requieren revisión pormenorizada.</p>
+                  <div className="p-3 bg-[#C5A566] text-white text-xs rounded border border-[#C5A566]/20 shadow-sm">
+                    <p className="font-bold">Rigor Técnico de Prestaciones</p>
+                    <p className="mt-1 text-white/90">La Seguridad Social de España calcula IT y Jubilación basándose en bases reguladoras reales, cotizaciones e hipótesis que requieren revisión pormenorizada.</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -894,9 +901,9 @@ export default function App() {
               {/* TAB 5: PATRIMONIO E INVERSION */}
               {activeTab === "patrimonio" && (
                 <div className="space-y-4">
-                  <div className="p-3 bg-[#C5A566]/10 text-slate-700 text-xs rounded border border-[#C5A566]/20">
-                    <p className="font-bold text-[#A8833F]">Análisis Inmobiliario Prudente</p>
-                    <p className="mt-1">Si el destino de las rentas inmobiliarias es desconocido, por prudencia, no se acumulan como patrimonio proyectado de jubilación, tratándolo únicamente como flujo pasivo potencial.</p>
+                  <div className="p-3 bg-[#C5A566] text-white text-xs rounded border border-[#C5A566]/20 shadow-sm">
+                    <p className="font-bold">Análisis Inmobiliario Prudente</p>
+                    <p className="mt-1 text-white/90">Si el destino de las rentas inmobiliarias es desconocido, por prudencia, no se acumulan como patrimonio proyectado de jubilación, tratándolo únicamente como flujo pasivo potencial.</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -929,9 +936,9 @@ export default function App() {
               {/* TAB 6: LEGAL Y SUCESORIO */}
               {activeTab === "legal" && (
                 <div className="space-y-4">
-                  <div className="p-3 bg-[#C5A566]/10 text-slate-700 text-xs rounded border border-[#C5A566]/20">
-                    <p className="font-bold text-[#A8833F]">El valor de la Sucesión</p>
-                    <p className="mt-1">Un plan financiero sin testamento o protocolo documental pierde eficacia ante situaciones sobrevenidas, forzando congelaciones de cuentas corrientes y gastos imprevistos.</p>
+                  <div className="p-3 bg-[#C5A566] text-white text-xs rounded border border-[#C5A566]/20 shadow-sm">
+                    <p className="font-bold">El valor de la Sucesión</p>
+                    <p className="mt-1 text-white/90">Un plan financiero sin testamento o protocolo documental pierde eficacia ante situaciones sobrevenidas, forzando congelaciones de cuentas corrientes y gastos imprevistos.</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -1042,7 +1049,7 @@ export default function App() {
             <div className="lg:col-span-4 bg-white/5 border border-white/10 rounded-lg p-5 flex flex-col justify-center text-center space-y-4">
               <div>
                 <span className="text-[#C5A566] text-[10px] font-black uppercase tracking-widest block">Informe de Auditoría Completa</span>
-                <h3 className="text-md font-black text-white mt-1">Descarga del Documento Certificado</h3>
+                <h3 className="text-md font-black text-white mt-1">Descarga del Informe de Auditoría</h3>
                 <p className="text-xs text-slate-400 mt-2">PDF de diseño profesional con escenarios macroeconómicos, orden sucesorio y diagnóstico formal del asesor.</p>
               </div>
 
