@@ -477,6 +477,112 @@ function drawPatrimonioProyectadoChart(
   state.y += chartH + 28; // Espaciado posterior
 }
 
+function drawExcessLiquidityChart(
+  doc: jsPDF,
+  state: PageState,
+  title: string,
+  excessValue: number
+) {
+  ensureSpace(doc, state, 84);
+  state.y += 10; // Espaciado anterior
+  const chartY = state.y;
+  const chartH = 38;
+  const chartW = 150;
+  const chartX = M + 15;
+
+  // Title
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...SLATE);
+  doc.text(title.toUpperCase(), M, chartY);
+
+  // Background box
+  doc.setFillColor(...LIGHT);
+  doc.setDrawColor(...BORDER);
+  doc.roundedRect(M, chartY + 10, W, chartH + 15, 1.5, 1.5, 'FD');
+
+  // Axes and Grid
+  doc.setDrawColor(220, 225, 230);
+  doc.setLineWidth(0.2);
+
+  const sampleYears = [0, 5, 10, 15, 20];
+  const points = sampleYears.map(year => {
+    const parado = excessValue;
+    const invertido = Math.round(excessValue * Math.pow(1.06, year));
+    return {
+      year,
+      parado,
+      invertido
+    };
+  });
+
+  const maxValue = Math.max(...points.map(p => p.invertido), 1000);
+  const scale = (val: number) => (val / maxValue) * (chartH - 8);
+
+  // Reference lines
+  for (let i = 0; i <= 4; i++) {
+    const gridY = chartY + 10 + chartH - (i * (chartH - 8)) / 4;
+    doc.line(chartX, gridY, chartX + chartW, gridY);
+
+    // Y-axis label
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(5.5);
+    doc.setTextColor(...MUTED);
+    doc.text(money((maxValue * i) / 4), chartX - 2, gridY + 1.5, { align: 'right' });
+  }
+
+  // Draw side-by-side bars for each Year point
+  const numPoints = points.length;
+  const spacing = chartW / numPoints;
+  const totalBarWidth = spacing * 0.6;
+  const singleBarWidth = totalBarWidth / 2;
+
+  points.forEach((pt, index) => {
+    const xBase = chartX + index * spacing + (spacing - totalBarWidth) / 2;
+
+    // Bar 1: Dinero parado (gray/slate)
+    const paradoHeight = scale(pt.parado);
+    const pX = xBase;
+    const pY = chartY + 10 + chartH - paradoHeight;
+    doc.setFillColor(156, 163, 175); // Gray-400
+    doc.rect(pX, pY, singleBarWidth - 0.5, paradoHeight, 'F');
+
+    // Bar 2: Invertido (emerald green)
+    const invertidoHeight = scale(pt.invertido);
+    const iX = xBase + singleBarWidth;
+    const iY = chartY + 10 + chartH - invertidoHeight;
+    doc.setFillColor(...GREEN); // Emerald green
+    doc.rect(iX, iY, singleBarWidth - 0.5, invertidoHeight, 'F');
+
+    // Label for Invertido on top
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(5.0);
+    doc.setTextColor(...SLATE);
+    doc.text(money(pt.invertido), iX + (singleBarWidth / 2), iY - 1, { align: 'center' });
+
+    // X-axis label
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...BLACK);
+    doc.text(`Año ${pt.year}`, xBase + (totalBarWidth / 2), chartY + 10 + chartH + 3.5, { align: 'center' });
+  });
+
+  // Legend at bottom
+  const legendY = chartY + 10 + chartH + 8;
+  doc.setFillColor(156, 163, 175);
+  doc.rect(M + 25, legendY, 3, 3, 'F');
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(5.5);
+  doc.setTextColor(...MUTED);
+  doc.text('Dinero Parado (0% rentabilidad)', M + 30, legendY + 2.4);
+
+  doc.setFillColor(...GREEN);
+  doc.rect(M + 75, legendY, 3, 3, 'F');
+  doc.text('Inversión Proyectada al 6% anual compuesto', M + 80, legendY + 2.4);
+
+  state.y += chartH + 28; // Espaciado posterior
+}
+
 // Table cell drawers
 function drawTable(
   doc: jsPDF,
@@ -591,7 +697,7 @@ async function generatePdf() {
   // Central decorative grid
   doc.setDrawColor(...BORDER);
   doc.setLineWidth(0.2);
-  doc.line(20, 118, 190, 118);
+  doc.line(20, 106, 190, 106);
   doc.line(20, 220, 190, 220);
 
   // Titles (Shifted for premium light balance without logo)
@@ -963,6 +1069,38 @@ async function generatePdf() {
   doc.text(statusText.toUpperCase(), c4X, cardY + 10.5, { align: 'center' });
 
   state.y += cardH + 4;
+
+  // 3.1 OPTIMIZACIÓN DE LIQUIDEZ EXCEDENTE (CONDICIONAL)
+  const maxAllowedReserva = metrics.expenses.total * 9;
+  const excessBanco = formData.dineroBanco - maxAllowedReserva;
+  
+  if (metrics.liquidity.mesesCubiertos > 9 && excessBanco > 0) {
+    ensureSpace(doc, state, 72);
+    state.y += 4;
+    
+    // Draw an elegant box with a light background
+    const boxY = state.y;
+    doc.setFillColor(254, 253, 240); // Soft amber light bg
+    doc.setDrawColor(245, 158, 11);    // Soft amber border
+    doc.roundedRect(M, boxY, W, 21, 1.5, 1.5, 'FD');
+    
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(180, 83, 9); // Dark amber text
+    doc.text('¡EXCESO DE LIQUIDEZ DETECTADO!', M + 4, boxY + 5.5);
+    
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(...BLACK);
+    const advisoryText = `Tu fondo de emergencia de ${money(formData.dineroBanco)} cubre ${metrics.liquidity.mesesCubiertos.toFixed(1)} meses de gastos, superando el limite prudencial maximo recomendado de 9 meses (${money(maxAllowedReserva)}). Dispones de un excedente parado e improductivo de ${money(excessBanco)}. Te aconsejamos canalizar este exceso de ahorro e invertirlo en herramientas financieras eficientes con rentabilidad (p. ej., carteras diversificadas al 6% anual compuesto) para protegerlo del efecto invisible de la devaluacion por inflacion y potenciar tu crecimiento.`;
+    const advisoryLines = doc.splitTextToSize(advisoryText, W - 8);
+    doc.text(advisoryLines, M + 4, boxY + 10);
+    
+    state.y += 27;
+    
+    // Draw the 20-year projection chart of the excess!
+    drawExcessLiquidityChart(doc, state, 'PROYECCION DEL EXCESO DE LIQUIDEZ A 20 ANOS (COMPUESTO AL 6% ANUAL)', excessBanco);
+  }
 
   // ==========================================
   // PAGE 5: AUDITORÍA DE PREVISIÓN SOCIAL (Fase 13.7 & 13.8)

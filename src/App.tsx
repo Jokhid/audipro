@@ -222,6 +222,22 @@ export default function App() {
   const warnings = useMemo(() => validateReportConsistency(formData), [formData]);
   const actionPlan = useMemo(() => generateActionPlan(formData, metrics), [formData, metrics]);
 
+  const excessProjectionData = useMemo(() => {
+    const maxAllowedReserva = expenses.total * 9;
+    const excess = Math.max(0, liquidity.dineroBanco - maxAllowedReserva);
+    if (excess <= 0) return [];
+    
+    const data = [];
+    for (let year = 0; year <= 20; year += 5) {
+      data.push({
+        year: `Año ${year}`,
+        parado: Math.round(excess),
+        invertido: Math.round(excess * Math.pow(1.06, year))
+      });
+    }
+    return data;
+  }, [expenses.total, liquidity.dineroBanco]);
+
   const renderThermometer = (score: number) => {
     const percentage = Math.min(100, Math.max(0, score * 10));
     return (
@@ -620,6 +636,57 @@ export default function App() {
                 <div className="mt-1.5 text-[11px] text-slate-600 bg-slate-50 p-2.5 border-l-2 border-blue-400 rounded-r leading-relaxed">
                   <strong>¿Por qué se sugiere esto?</strong> Un fondo de reserva de entre 6 y 9 meses de gastos fijos (rango sugerido: <strong>{formatCurrency(expenses.total * 6)}</strong> - <strong>{formatCurrency(expenses.total * 9)}</strong>) asegura que puedas afrontar crisis empresariales, desempleo o accidentes sobrevenidos sin endeudarte de forma perjudicial ni tener que liquidar de forma prematura otras inversiones a largo plazo.
                 </div>
+                {liquidity.mesesCubiertos > 9 && (
+                  <div className="mt-3 p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-3">
+                    <div className="flex items-start gap-2">
+                      <Info className="h-4.5 w-4.5 text-[#C5A566] shrink-0 mt-0.5" />
+                      <div className="text-left text-xs">
+                        <h4 className="font-bold text-amber-900 uppercase tracking-wider text-[10.5px]">Optimización de Exceso de Liquidez</h4>
+                        <p className="mt-1 text-slate-700 leading-relaxed font-medium">
+                          Tu fondo de emergencia de <strong>{formatCurrency(liquidity.dineroBanco)}</strong> supera los 9 meses de gastos cubiertos (máximo recomendado: <strong>{formatCurrency(expenses.total * 9)}</strong>). 
+                          Dispones de un excedente parado de <strong className="text-emerald-700">{formatCurrency(liquidity.dineroBanco - expenses.total * 9)}</strong>.
+                        </p>
+                        <p className="mt-1 text-slate-600 leading-relaxed">
+                          Se recomienda encarecidamente <strong>canalizar e invertir el exceso de ahorro en herramientas con rentabilidad</strong> para batir la inflación silenciosa. 
+                          A continuación puedes ver la proyección a 20 años comparando este dinero inactivo frente a una rentabilidad estimada del <strong>6% anual compuesto</strong>:
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-1.5">
+                      <div className="h-36 w-full text-[10px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={excessProjectionData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                            <defs>
+                              <linearGradient id="colorParado" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.2}/>
+                                <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
+                              </linearGradient>
+                              <linearGradient id="colorInvertido" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="year" stroke="#94a3b8" tickLine={false} />
+                            <YAxis stroke="#94a3b8" tickLine={false} tickFormatter={(v) => `${Math.round(v/1000)}k€`} />
+                            <Tooltip 
+                              formatter={(value: any) => [`${formatCurrency(Number(value))}`, ""]}
+                              contentStyle={{ background: "#ffffff", borderRadius: "6px", border: "1px solid #e2e8f0" }}
+                            />
+                            <Legend verticalAlign="top" height={20} iconSize={8} />
+                            <Area type="monotone" name="Dinero Parado (0%)" dataKey="parado" stroke="#94a3b8" strokeWidth={1.5} fillOpacity={1} fill="url(#colorParado)" />
+                            <Area type="monotone" name="Proyección (6%)" dataKey="invertido" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorInvertido)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <p className="text-[10px] text-slate-400 text-center mt-1 italic leading-tight">
+                        Al cabo de 20 años, tus {formatCurrency(liquidity.dineroBanco - expenses.total * 9)} invertidos se convertirían en{" "}
+                        <strong className="text-emerald-600 font-bold">{formatCurrency(Math.round((liquidity.dineroBanco - expenses.total * 9) * Math.pow(1.06, 20)))}</strong>, multiplicando tu capital ocioso.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
                   <span>Prioridad: <strong className="text-slate-500 font-bold uppercase">Baja</strong></span>
                   <span>Nivel: {liquidity.nivel.toUpperCase()}</span>
