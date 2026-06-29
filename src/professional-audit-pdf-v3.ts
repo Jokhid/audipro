@@ -731,7 +731,7 @@ async function generatePdf() {
   doc.setTextColor(...BLACK);
   doc.text(`CLIENTE: ${clientName.toUpperCase()}`, 32, 176);
   doc.text(`FECHA DE EMISIÓN: ${new Date().toLocaleDateString('es-ES')}`, 32, 182);
-  doc.text(`TIPO DE INFORME: Auditoría de Seguridad Financiera de Alto Impacto`, 32, 188);
+  doc.text(`TIPO DE INFORME: Auditoría de Seguridad Financiera y patrimonial.`, 32, 188);
 
   // Adviser stamp
   doc.setFont('Helvetica', 'bold');
@@ -924,12 +924,15 @@ async function generatePdf() {
   paragraph(doc, state, 'Análisis de la cuenta de resultados personales de la unidad familiar, apalancamiento, excedentes líquidos recurrentes y optimización del colchón de reserva.');
   sectionDivider(doc, state);
 
+  const conyugeText = formData.conyugeConIngresos === 'Si' ? ` | Cónyuge: ${money(formData.ingresosConyuge)}` : '';
+  const conyugeObs = formData.conyugeConIngresos === 'Si' ? 'Incluye ingresos ordinarios del cónyuge' : 'Excluye otros ingresos variables';
+
   const finRows = [
-    ['Ingresos ordinarios y pasivos', `Salario: ${money(formData.salarioNetoMensual)} | Pasivos: ${money(formData.rentasInmobiliariasMensualesNetas)}`, 'Flujo estable', 'Excluye otros ingresos variables'],
+    ['Ingresos ordinarios y pasivos', `Cliente: ${money(formData.salarioNetoMensual)}${conyugeText} | Pasivos: ${money(formData.rentasInmobiliariasMensualesNetas)}`, 'Flujo estable', conyugeObs],
     ['Gastos mensuales fijos', money(metrics.expenses.total), 'Verificado', `Personal: ${money(metrics.expenses.personal)} | Deuda: ${money(metrics.expenses.housing)}`],
-    ['Capacidad de ahorro fáctica', money(metrics.savingsCapacity.sinRentas), 'Verificado', 'Salario neto ordinario menos gastos totales'],
+    ['Capacidad de ahorro fáctica', money(metrics.savingsCapacity.sinRentas), 'Verificado', formData.conyugeConIngresos === 'Si' ? 'Ingresos familiares netos menos gastos totales' : 'Salario neto ordinario menos gastos totales'],
     ['Fondo de Emergencia Líquido', `${money(formData.dineroBanco)} (${metrics.liquidity.mesesCubiertos.toFixed(1)} meses)`, 'Adecuado', 'Suficiente para imprevistos corrientes'],
-    ['Apalancamiento de Deuda', `${money(metrics.debt.deudaMensualTotal)} / mes`, 'Controlado', `Ratio de endeudamiento del ${percent(metrics.debt.ratioSobreSalario * 100)}`],
+    ['Apalancamiento de Deuda', `${money(metrics.debt.deudaMensualTotal)} / mes`, 'Controlado', `Ratio de endeudamiento familiar del ${percent(metrics.debt.ratioSobreSalario * 100)}`],
     ['Dinero invertido activo', money(formData.dineroInvertido), 'Verificado', `Rentabilidad histórica estimada: ${percent(formData.rentabilidadInversion ?? 5)}`]
   ];
   drawTable(doc, state, ['PARÁMETRO FINANCIERO', 'VALOR / COBERTURA', 'DIAGNÓSTICO', 'NOTAS TÉCNICAS'], [50, 40, 25, 67], finRows);
@@ -1277,11 +1280,11 @@ async function generatePdf() {
     },
     {
       title: '3. Protección Familiar (Decesos)',
-      text: `El capital objetivo recomendado de ${money(metrics.familyNeed.capitalFamiliarObjetivo)} se calcula sumando: amortización de deudas pendientes de ${money(metrics.familyNeed.detalles.deuda)}, gastos de transición inmediata de ${money(metrics.familyNeed.detalles.transicion)}, educación de tus ${formData.hijosMenores25 || 0} hijos de ${money(metrics.familyNeed.detalles.educacion)} (estimando 18.000 € por hijo para estudios superiores), y protección de rentas de ${money(metrics.familyNeed.detalles.rentaNecesaria)}. Al restar tu seguro de vida existente de ${money(formData.capitalSeguroVidaExistente || 0)}, resulta un déficit de protección de ${money(metrics.familyNeed.deficitDeProteccion)} que se sugiere cubrir.`
+      text: `El capital objetivo recomendado de ${money(metrics.familyNeed.capitalFamiliarObjetivo)} se calcula sumando: amortización de deudas pendientes de ${money(metrics.familyNeed.detalles.deuda)}, gastos de transición inmediata de ${money(metrics.familyNeed.detalles.transicion)}, educación de tus ${formData.hijosMenores25 || 0} hijos de ${money(metrics.familyNeed.detalles.educacion)} (estimando 18.000 € por hijo para estudios superiores), y protección de rentas de ${money(metrics.familyNeed.detalles.rentaNecesaria)}. Al restar tu seguro de vida existente de ${money(formData.capitalSeguroVidaExistente || 0)}, resulta un déficit de protección de ${money(metrics.familyNeed.deficitDeProteccion)} que se sugiere cubrir.${formData.conyugeConIngresos === 'Si' ? ` Se han integrado los ingresos declarados del cónyuge (${money(formData.ingresosConyuge)}/mes) dentro del cómputo de la subsistencia conjunta, reduciendo la brecha mensual familiar.` : ''}`
     },
     {
       title: '4. Apalancamiento y Deuda',
-      text: `Las recomendaciones financieras y de control aconsejan no comprometer más del 35% de tus ingresos ordinarios netos en el servicio de la deuda mensual (cuota de ${money(metrics.debt.deudaMensualTotal)} sobre salario de ${money(formData.salarioNetoMensual)}). Mantener este ratio en ${percent(metrics.debt.ratioSobreSalario * 100)} asegura la sostenibilidad de las finanzas familiares.`
+      text: `Las recomendaciones financieras y de control aconsejan no comprometer más del 35% de los ingresos ordinarios netos en el servicio de la deuda mensual. En tu caso, se evalúa una cuota mensual de ${money(metrics.debt.deudaMensualTotal)} sobre unos ingresos familiares de referencia de ${money(formData.salarioNetoMensual + (formData.conyugeConIngresos === 'Si' ? formData.ingresosConyuge : 0))} (incluyendo ${formData.conyugeConIngresos === 'Si' ? `los ingresos ordinarios del cónyuge de ${money(formData.ingresosConyuge)}` : 'únicamente los ingresos del cliente'}). Mantener este ratio de endeudamiento familiar en el ${percent(metrics.debt.ratioSobreSalario * 100)} garantiza la sostenibilidad de las finanzas familiares.`
     },
     {
       title: '5. Planificación de Jubilación',
@@ -1402,7 +1405,8 @@ async function generatePdf() {
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.2);
   doc.setTextColor(...BLACK);
-  const p3 = `Dispones de una reserva de liquidez bancaria de ${money(formData.dineroBanco)}, equivalente a ${metrics.liquidity.mesesCubiertos.toFixed(1)} meses de gastos recurrentes fijos. Aunque te permite resolver incidencias cotidianas menores, aconsejamos consolidar de forma prioritaria un fondo equivalente a entre 6 y 9 meses de gastos fijos para blindar plenamente tu liquidez operativa. Por otro lado, tu servicio de deuda mensual de ${money(metrics.debt.deudaMensualTotal)} supone un ratio sobre tu salario neto ordinario del ${percent(metrics.debt.ratioSobreSalario * 100)}, situándose en una posición muy saludable y controlada, holgadamente por debajo del límite prudencial máximo aconsejado por las autoridades del 35%.`;
+  const baseIngresosText = formData.conyugeConIngresos === 'Si' ? 'ingresos familiares netos conjuntos' : 'tu salario neto ordinario';
+  const p3 = `Dispones de una reserva de liquidez bancaria de ${money(formData.dineroBanco)}, equivalente a ${metrics.liquidity.mesesCubiertos.toFixed(1)} meses de gastos recurrentes fijos. Aunque te permite resolver incidencias cotidianas menores, aconsejamos consolidar de forma prioritaria un fondo equivalente a entre 6 y 9 meses de gastos fijos para blindar plenamente tu liquidez operativa. Por otro lado, tu servicio de deuda mensual de ${money(metrics.debt.deudaMensualTotal)} supone un ratio sobre ${baseIngresosText} del ${percent(metrics.debt.ratioSobreSalario * 100)}, situándose en una posición muy saludable y controlada, holgadamente por debajo del límite prudencial máximo aconsejado por las autoridades del 35%.`;
   const p3Lines = doc.splitTextToSize(p3, W);
   doc.text(p3Lines, M, state.y);
   state.y += p3Lines.length * 3.8 + 12;

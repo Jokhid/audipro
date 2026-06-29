@@ -37,7 +37,8 @@ export function calculateMonthlyExpenses(data: ClientData) {
 // 2. Capacidad real de ahorro
 export function calculateRealSavingsCapacity(data: ClientData, rentasNetasDisponibles: number) {
   const gastos = calculateMonthlyExpenses(data).total;
-  const ingresosBase = Number(data.salarioNetoMensual || 0) + Number(data.otrosIngresosNetos || 0);
+  const ingresosConyuge = data.conyugeConIngresos === "Si" ? Number(data.ingresosConyuge || 0) : 0;
+  const ingresosBase = Number(data.salarioNetoMensual || 0) + Number(data.otrosIngresosNetos || 0) + ingresosConyuge;
   
   const sinRentas = Math.max(0, ingresosBase - gastos);
   const conRentas = Math.max(0, ingresosBase + rentasNetasDisponibles - gastos);
@@ -57,9 +58,11 @@ export function calculateRealSavingsCapacity(data: ClientData, rentasNetasDispon
 export function calculateDebtRatios(data: ClientData, rentasNetasDisponibles: number) {
   const deudaMensualTotal = Number(data.cuotaHipoteca || 0) + Number(data.cuotaPrestamos || 0) + Number(data.cuotaTarjetas || 0) || Number(data.viviendaPrestamosMensual || data.alquilerHipotecaPrestamos || 0);
   const salario = Number(data.salarioNetoMensual || 0);
-  const ingresosTotales = salario + rentasNetasDisponibles + Number(data.otrosIngresosNetos || 0);
+  const ingresosConyuge = data.conyugeConIngresos === "Si" ? Number(data.ingresosConyuge || 0) : 0;
+  const baseIngresosReferencia = salario + ingresosConyuge;
+  const ingresosTotales = baseIngresosReferencia + rentasNetasDisponibles + Number(data.otrosIngresosNetos || 0);
 
-  const ratioSobreSalario = salario > 0 ? deudaMensualTotal / salario : 0;
+  const ratioSobreSalario = baseIngresosReferencia > 0 ? deudaMensualTotal / baseIngresosReferencia : 0;
   const ratioSobreIngresosTotales = ingresosTotales > 0 ? deudaMensualTotal / ingresosTotales : 0;
 
   let diagnostico = "";
@@ -193,7 +196,8 @@ export function calculateSurvivorBenefits(data: ClientData, totalExpenses: numbe
   // Escenario familiar conjunto
   const conjuntoMontoSinTope = viudedadMonto + orfandadMonto;
   const conjuntoMonto = Math.min(base, conjuntoMontoSinTope); // Tope legal general al 100% de la base reguladora
-  const conjuntoBrechaOSuperavit = conjuntoMonto - totalExpenses;
+  const ingresosConyuge = data.conyugeConIngresos === "Si" ? Number(data.ingresosConyuge || 0) : 0;
+  const conjuntoBrechaOSuperavit = (conjuntoMonto + ingresosConyuge) - totalExpenses;
   const esFamiliarCubierto = conjuntoBrechaOSuperavit >= 0;
 
   return {

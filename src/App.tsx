@@ -599,6 +599,11 @@ export default function App() {
                     • Protección de rentas familiares: <strong>{formatCurrency(familyNeed.detalles.rentaNecesaria)}</strong> (cubre la brecha mensual de vida multiplicada por 120 meses / 10 años).
                   </span>
                   Al restar tu seguro de vida existente de <strong>{formatCurrency(formData.capitalSeguroVidaExistente)}</strong>, resulta un déficit de protección de <strong>{formatCurrency(familyNeed.deficitDeProteccion)}</strong> que sugerimos cubrir.
+                  {formData.conyugeConIngresos === "Si" && (
+                    <div className="mt-1.5 pt-1 border-t border-yellow-200/50 text-[10px] text-emerald-800 font-bold">
+                      Nota: Se han integrado los ingresos declarados del cónyuge ({formatCurrency(formData.ingresosConyuge)}/mes) dentro de la subsistencia conjunta, reduciendo la brecha mensual y el déficit de protección familiar.
+                    </div>
+                  )}
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
                   <span>Prioridad: <strong className="text-[#F97316] font-bold uppercase">Media-Alta</strong></span>
@@ -721,7 +726,7 @@ export default function App() {
                     : "Ratio saludable por debajo del límite prudente del 35%."}
                 </p>
                 <div className="mt-1.5 text-[11px] text-slate-600 bg-slate-50 p-2.5 border-l-2 border-indigo-400 rounded-r leading-relaxed">
-                  <strong>¿Por qué se sugiere esto?</strong> Las recomendaciones financieras y reguladoras aconsejan no comprometer más del 35% de tus ingresos ordinarios netos en el servicio de la deuda mensual (cuota de <strong>{formatCurrency(debt.deudaMensualTotal)}</strong> sobre salario neto de <strong>{formatCurrency(formData.salarioNetoMensual)}</strong>). Mantener este ratio en <strong>{formatPercent(debt.ratioSobreSalario * 100)}</strong> asegura la sostenibilidad financiera global a largo plazo.
+                  <strong>¿Por qué se sugiere esto?</strong> Las recomendaciones financieras y reguladoras aconsejan no comprometer más del 35% de tus ingresos ordinarios netos en el servicio de la deuda mensual. En tu caso, la cuota es de <strong>{formatCurrency(debt.deudaMensualTotal)}</strong> sobre unos ingresos familiares de referencia de <strong>{formatCurrency(formData.salarioNetoMensual + (formData.conyugeConIngresos === "Si" ? formData.ingresosConyuge : 0))}</strong> (que incluye {formData.conyugeConIngresos === "Si" ? `el salario neto del cliente y los ingresos del cónyuge de ${formatCurrency(formData.ingresosConyuge)}/mes` : "el salario neto del cliente"}). Mantener este ratio de endeudamiento familiar en <strong>{formatPercent(debt.ratioSobreSalario * 100)}</strong> asegura la total sostenibilidad de las finanzas del hogar a largo plazo.
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
                   <span>Prioridad: <strong className="text-slate-500 font-bold uppercase">Baja</strong></span>
@@ -1221,6 +1226,11 @@ export default function App() {
               <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Capacidad Ahorro Real</p>
               <p className="mt-2 text-xl font-black text-slate-800">{formatCurrency(savingsCapacity.sinRentas)}</p>
               <p className="mt-1 text-[11px] text-slate-500">Capacidad de ahorro fáctica calculada</p>
+              {formData.conyugeConIngresos === "Si" && (
+                <p className="text-[9px] text-emerald-700 font-bold mt-1">
+                  (Incluye {formatCurrency(formData.ingresosConyuge)}/mes de ingresos del cónyuge)
+                </p>
+              )}
             </div>
 
             {/* Tarjeta 2: ESFUERZO MENSUAL FINANCIERO */}
