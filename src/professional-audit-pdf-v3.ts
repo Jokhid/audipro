@@ -27,20 +27,65 @@ function money(val: number) { return `${Math.round(val || 0).toLocaleString('es-
 function percent(val: number) { return `${Number(val || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}%`; }
 
 // Page decorations
+function drawLogoSymbol(doc: jsPDF, x: number, y: number, size: number) {
+  const s = size / 30.0; // scale factor based on 30mm width
+  
+  // Pillars/brackets: pure white
+  doc.setFillColor(255, 255, 255);
+  
+  // Left bracket (shaped like [ )
+  // Stem
+  doc.rect(x + 1.75 * s, y + 2.0 * s, 4.5 * s, 31.0 * s, 'F');
+  // Top serif
+  doc.rect(x - 1.0 * s, y + 2.0 * s, 7.25 * s, 4.0 * s, 'F');
+  // Bottom serif
+  doc.rect(x - 1.0 * s, y + 29.0 * s, 7.25 * s, 4.0 * s, 'F');
+
+  // Right bracket (shaped like ] )
+  // Stem
+  doc.rect(x + 23.75 * s, y + 2.0 * s, 4.5 * s, 31.0 * s, 'F');
+  // Top serif
+  doc.rect(x + 23.75 * s, y + 2.0 * s, 7.25 * s, 4.0 * s, 'F');
+  // Bottom serif
+  doc.rect(x + 23.75 * s, y + 29.0 * s, 7.25 * s, 4.0 * s, 'F');
+
+  // Center top pillar
+  doc.rect(x + 13.0 * s, y + 2.0 * s, 4.0 * s, 7.5 * s, 'F');
+
+  // Center bottom pillar
+  doc.rect(x + 13.0 * s, y + 25.5 * s, 4.0 * s, 7.5 * s, 'F');
+  
+  // Center circle: ocher gold (197, 165, 102)
+  doc.setFillColor(197, 165, 102);
+  doc.setDrawColor(197, 165, 102);
+  doc.setLineWidth(0.65 * s);
+  doc.circle(x + 15.0 * s, y + 17.5 * s, 6.75 * s, 'FD');
+
+  // Reset draw settings
+  doc.setLineWidth(1.0);
+  doc.setDrawColor(0, 0, 0);
+}
+
 function pageHeader(doc: jsPDF, subtitle: string) {
   doc.setFillColor(...BLACK);
   doc.rect(0, 0, 210, 30, 'F');
 
+  // Draw scaled logo symbol on the left side of the header (reduced size by 25% from 16 to 12)
+  drawLogoSymbol(doc, 14, 9, 12);
+
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(255, 255, 255);
-  doc.text('JOSÉ CARLOS HIDALGO', 14, 11);
+  doc.text('JOSÉ CARLOS HIDALGO', 32, 13);
+  
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...GOLD);
-  doc.text(subtitle.toUpperCase(), 14, 18);
+  doc.text(subtitle.toUpperCase(), 32, 20);
+
+  // Email and phone contact on the right side of the header
   doc.setTextColor(220, 220, 220);
-  doc.text('josecarlos@hilolegal.es | 647 50 60 40', 14, 25);
+  doc.text('josecarlos@hilolegal.es   |   647 50 60 40', 196, 16.5, { align: 'right' });
 }
 
 function footer(doc: jsPDF, page: number) {
@@ -648,7 +693,13 @@ function drawTable(
       if (val === 'Viable' || val === 'Cubierto' || val === 'Alta' || val === 'Bajo' || val === 'Leve' || val === 'PROTEGIDO') {
         doc.setFont('Helvetica', 'bold');
         if (val === 'Viable' || val === 'Cubierto' || val === 'Bajo' || val === 'Leve' || val === 'PROTEGIDO') doc.setTextColor(...GREEN);
-        if (val === 'Alta') doc.setTextColor(...RED);
+        if (val === 'Alta') {
+          if (headers[i] === 'FIABILIDAD') {
+            doc.setTextColor(...GREEN);
+          } else {
+            doc.setTextColor(...RED);
+          }
+        }
       } else if (val === 'Ajustado' || val === 'Media' || val === 'Moderada' || val === 'Pendiente' || val === 'ALERTA') {
         doc.setFont('Helvetica', 'bold');
         doc.setTextColor(...ORANGE);
@@ -666,6 +717,15 @@ function drawTable(
     state.y += rowHeight;
   });
   state.y += 3.5;
+}
+
+function drawCoverLogo(doc: jsPDF, x: number, y: number) {
+  // Rounded background container in deep corporate navy, matching the app's brand identity
+  doc.setFillColor(13, 27, 42);
+  doc.roundedRect(x - 4, y - 2, 38, 39, 3, 3, 'F');
+
+  // Draw scaled logo symbol at scale size = 30 (which is 1:1 scale)
+  drawLogoSymbol(doc, x, y, 30);
 }
 
 // -------------------------------------------------------------
@@ -700,7 +760,10 @@ async function generatePdf() {
   doc.line(20, 106, 190, 106);
   doc.line(20, 220, 190, 220);
 
-  // Titles (Shifted for premium light balance without logo)
+  // Logo centrado en la parte superior
+  drawCoverLogo(doc, 90, 35);
+
+  // Titles (Shifted for premium light balance with logo)
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(23);
   doc.setTextColor(...BLACK);
@@ -860,7 +923,7 @@ async function generatePdf() {
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(...SLATE);
-  doc.text('RECOMENDACIÓN GENERAL DEL ASESOR:', M + 69, scoreY + 5.5);
+  doc.text('RECOMENDACIÓN GENERAL PROFESIONAL:', M + 69, scoreY + 5.5);
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.2);
   doc.setTextColor(...MUTED);
@@ -944,17 +1007,17 @@ async function generatePdf() {
   const objRows = projects.map((p: any) => {
     const years = Number(p.years || 1);
     const target = Number(p.target || 0);
-    // Lineal vs financiera
-    const r = 0.05 / 12; // 5% standard assumed
-    const lineal = target / (years * 12);
-    const financiera = (target * r) / (Math.pow(1 + r, years * 12) - 1);
+    // Use exact values calculated in the UI (which respect priority and user-defined interest rates)
+    const lineal = p.aportacionLineal !== undefined ? p.aportacionLineal : (target / (years * 12));
+    const r = (p.priority === "Alta" ? Number(formData.rentabilidadAhorroSistematico || 6) : 2) / 1200;
+    const financiera = p.aportacionFinanciera !== undefined ? p.aportacionFinanciera : (r > 0 ? ((target * r) / (Math.pow(1 + r, years * 12) - 1)) : lineal);
     return [
       p.name,
       money(target),
       `${years} años`,
       `${money(lineal)}/mes`,
       `${money(financiera)}/mes`,
-      p.status === "Viable" ? "Viable" : "Ajustado"
+      (p.viable === "Viable" || p.status === "Viable") ? "Viable" : "Ajustado"
     ];
   });
   
@@ -1116,13 +1179,13 @@ async function generatePdf() {
   const isAutonomo = formData.regimenSeguridadSocial === "RETA (Autónomos)";
 
   const prevRows = [
-    ['Baja Laboral (enfermedad común, tramo 60% B.R.)', money(metrics.temporaryDisability.tramo60Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo60Brecha)}`, 'Media', isAutonomo ? 'Contratar subsidio privado' : 'Cubierto por Régimen General'],
-    ['Baja Laboral (tramo 75% B.R.)', money(metrics.temporaryDisability.tramo75Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo75Brecha)}`, 'Media', 'Suficiente solo en tramo largo'],
-    ['Invalidez Permanente Total habitual (IPT, 55% B.R.)', money(metrics.disability.iptMonto), money(metrics.expenses.total), `-${money(metrics.disability.iptBrecha)}`, 'Baja', 'Revisar capital por invalidez'],
-    ['Invalidez Permanente Absoluta total (IPA, 100% B.R.)', money(metrics.disability.ipaMonto), money(metrics.expenses.total), `-${money(metrics.disability.ipaBrecha)}`, 'Media', 'Cubierto parcialmente'],
-    ['Pensión de Viudedad (cónyuge computable, 52% B.R.)', money(metrics.survivorBenefits.viudedadMonto), money(metrics.expenses.total), `-${money(metrics.survivorBenefits.viudedadBrechaAislada)}`, 'Baja', 'Requiere seguro de vida'],
-    ['Pensión de Orfandad (todos los hijos, 20% B.R. por hijo)', money(metrics.survivorBenefits.orfandadMonto), 'N/A', 'N/A', 'Media', 'Subsidio complementario de estudios'],
-    ['Pensión de Jubilación Ordinaria previsible (hasta 100% B.R.)', money(metrics.retirementGap.pensionEstimada), money(metrics.expenses.total), `-${money(metrics.retirementGap.brechaMensual)}`, 'Media', 'Planificar ahorro indexado']
+    ['Baja Laboral (enfermedad común, tramo 60% B.R.)', money(metrics.temporaryDisability.tramo60Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo60Brecha)}`, metrics.temporaryDisability.tramo60Monto >= metrics.expenses.total ? 'Alta' : 'Media', isAutonomo ? 'Contratar subsidio privado' : 'Cubierto por Régimen General'],
+    ['Baja Laboral (tramo 75% B.R.)', money(metrics.temporaryDisability.tramo75Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo75Brecha)}`, metrics.temporaryDisability.tramo75Monto >= metrics.expenses.total ? 'Alta' : 'Media', 'Suficiente solo en tramo largo'],
+    ['Invalidez Permanente Total habitual (IPT, 55% B.R.)', money(metrics.disability.iptMonto), money(metrics.expenses.total), `-${money(metrics.disability.iptBrecha)}`, metrics.disability.iptMonto >= metrics.expenses.total ? 'Alta' : 'Baja', 'Revisar capital por invalidez'],
+    ['Invalidez Permanente Absoluta total (IPA, 100% B.R.)', money(metrics.disability.ipaMonto), money(metrics.expenses.total), `-${money(metrics.disability.ipaBrecha)}`, metrics.disability.ipaMonto >= metrics.expenses.total ? 'Alta' : 'Media', 'Cubierto parcialmente'],
+    ['Pensión de Viudedad (cónyuge computable, 52% B.R.)', money(metrics.survivorBenefits.viudedadMonto), money(metrics.expenses.total), `-${money(metrics.survivorBenefits.viudedadBrechaAislada)}`, metrics.survivorBenefits.viudedadMonto >= metrics.expenses.total ? 'Alta' : 'Baja', 'Requiere seguro de vida'],
+    ['Pensión de Orfandad (todos los hijos, 20% B.R. por hijo)', money(metrics.survivorBenefits.orfandadMonto), money(metrics.expenses.total), `-${money(Math.max(0, metrics.expenses.total - metrics.survivorBenefits.orfandadMonto))}`, metrics.survivorBenefits.orfandadMonto >= metrics.expenses.total ? 'Alta' : 'Media', 'Subsidio complementario de estudios'],
+    ['Pensión de Jubilación Ordinaria previsible (hasta 100% B.R.)', money(metrics.retirementGap.pensionEstimada), money(metrics.expenses.total), `-${money(metrics.retirementGap.brechaMensual)}`, metrics.retirementGap.pensionEstimada >= metrics.expenses.total ? 'Alta' : 'Media', 'Planificar ahorro indexado']
   ];
   drawTable(
     doc,
@@ -1200,7 +1263,7 @@ async function generatePdf() {
   drawRetirementChart(
     doc,
     state,
-    'ESTUDIO COMPARATIVO DE INGRESOS MENSUALES JUBILADOS VS GASTO DE REFERENCIA',
+    'ESTUDIO COMPARATIVO DE INGRESOS MENSUALES POR PENSIÓN DE LA S.S. VS GASTO DE REFERENCIA',
     scens,
     metrics.expenses.total
   );

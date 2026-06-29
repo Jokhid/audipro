@@ -436,6 +436,7 @@ export default function App() {
       <header className="sticky top-0 z-50 bg-[#1A1A1A] text-white border-b border-white/10 shadow-md">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
+            <img src={brandLogo} alt="Logo" className="h-16 w-14 object-contain" />
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#C5A566]">Auditoría Patrimonial y de Previsión Familiar</p>
               <h1 className="text-xl font-black text-white sm:text-2xl">JOSÉ CARLOS HIDALGO</h1>
@@ -658,7 +659,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="pt-1.5">
+                    <div className="mt-2.5 bg-white p-3 rounded-lg border border-amber-200/40 shadow-xs">
                       <div className="h-36 w-full text-[10px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <AreaChart data={excessProjectionData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
