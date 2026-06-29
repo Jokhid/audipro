@@ -3,7 +3,20 @@ const STORAGE_INVESTMENTS = 'audit-real-estate-investments';
 const STORAGE_RENTS = 'audit-real-estate-rents';
 
 function money(value: number) {
-  return `${Math.round(value).toLocaleString('es-ES')} EUR`;
+  const rounded = Math.round(value || 0);
+  const isNegative = rounded < 0;
+  const absVal = Math.abs(rounded);
+  const str = absVal.toString();
+  let result = "";
+  let count = 0;
+  for (let i = str.length - 1; i >= 0; i--) {
+    result = str[i] + result;
+    count++;
+    if (count % 3 === 0 && i !== 0) {
+      result = "." + result;
+    }
+  }
+  return `${isNegative ? "-" : ""}${result} EUR`;
 }
 
 function numberFromText(value: string) {

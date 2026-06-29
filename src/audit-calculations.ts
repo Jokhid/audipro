@@ -6,7 +6,20 @@ export interface Warning {
 }
 
 export function formatCurrency(val: number): string {
-  return `${Math.round(val).toLocaleString("es-ES")} €`;
+  const rounded = Math.round(val || 0);
+  const isNegative = rounded < 0;
+  const absVal = Math.abs(rounded);
+  const str = absVal.toString();
+  let result = "";
+  let count = 0;
+  for (let i = str.length - 1; i >= 0; i--) {
+    result = str[i] + result;
+    count++;
+    if (count % 3 === 0 && i !== 0) {
+      result = "." + result;
+    }
+  }
+  return `${isNegative ? "-" : ""}${result} €`;
 }
 
 export function formatPercent(val: number): string {

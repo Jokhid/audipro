@@ -23,7 +23,22 @@ interface PageState {
 // Utility formatting functions
 function clean(val: string) { return String(val || '').replace(/\s+/g, ' ').trim(); }
 function slug(val: string) { return clean(val).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'cliente'; }
-function money(val: number) { return `${Math.round(val || 0).toLocaleString('es-ES')} €`; }
+function money(val: number) {
+  const rounded = Math.round(val || 0);
+  const isNegative = rounded < 0;
+  const absVal = Math.abs(rounded);
+  const str = absVal.toString();
+  let result = "";
+  let count = 0;
+  for (let i = str.length - 1; i >= 0; i--) {
+    result = str[i] + result;
+    count++;
+    if (count % 3 === 0 && i !== 0) {
+      result = "." + result;
+    }
+  }
+  return `${isNegative ? "-" : ""}${result} €`;
+}
 function percent(val: number) { return `${Number(val || 0).toLocaleString('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}%`; }
 
 // Page decorations
@@ -690,9 +705,9 @@ function drawTable(
       doc.setFontSize(6.2);
       doc.setTextColor(...SLATE);
 
-      if (val === 'Viable' || val === 'Cubierto' || val === 'Alta' || val === 'Bajo' || val === 'Leve' || val === 'PROTEGIDO') {
+      if (val === 'Viable' || val === 'Cubierto' || val === 'Alta' || val === 'Bajo' || val === 'Leve' || val === 'PROTEGIDO' || (val === 'Baja' && headers[i] === 'PRIORIDAD')) {
         doc.setFont('Helvetica', 'bold');
-        if (val === 'Viable' || val === 'Cubierto' || val === 'Bajo' || val === 'Leve' || val === 'PROTEGIDO') doc.setTextColor(...GREEN);
+        if (val === 'Viable' || val === 'Cubierto' || val === 'Bajo' || val === 'Leve' || val === 'PROTEGIDO' || (val === 'Baja' && headers[i] === 'PRIORIDAD')) doc.setTextColor(...GREEN);
         if (val === 'Alta') {
           if (headers[i] === 'FIABILIDAD') {
             doc.setTextColor(...GREEN);
@@ -703,7 +718,7 @@ function drawTable(
       } else if (val === 'Ajustado' || val === 'Media' || val === 'Moderada' || val === 'Pendiente' || val === 'ALERTA') {
         doc.setFont('Helvetica', 'bold');
         doc.setTextColor(...ORANGE);
-      } else if (val === 'No viable' || val === 'Alto' || val === 'Grave' || val === 'Baja' || val === 'VULNERABLE') {
+      } else if (val === 'No viable' || val === 'Alto' || val === 'Grave' || (val === 'Baja' && headers[i] !== 'PRIORIDAD') || val === 'VULNERABLE') {
         doc.setFont('Helvetica', 'bold');
         doc.setTextColor(...RED);
       }
@@ -1158,7 +1173,7 @@ async function generatePdf() {
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(6.8);
     doc.setTextColor(...BLACK);
-    const advisoryText = `Tu fondo de emergencia de ${money(formData.dineroBanco)} cubre ${metrics.liquidity.mesesCubiertos.toFixed(1)} meses de gastos, superando el limite prudencial maximo recomendado de 9 meses (${money(maxAllowedReserva)}). Dispones de un excedente parado e improductivo de ${money(excessBanco)}. Te aconsejamos canalizar este exceso de ahorro e invertirlo en herramientas financieras eficientes con rentabilidad (p. ej., carteras diversificadas al 6% anual compuesto) para protegerlo del efecto invisible de la devaluacion por inflacion y potenciar tu crecimiento.`;
+    const advisoryText = `Tu fondo de emergencia de ${money(formData.dineroBanco)} cubre ${metrics.liquidity.mesesCubiertos.toFixed(1)} meses de gastos, superando el limite prudencial maximo recomendado de 9 meses (${money(maxAllowedReserva)}). Dispones de un excedente parado e improductivo de ${money(excessBanco)}. Te aconsejamos canalizar este exceso de ahorro e invertirlo en herramientas financieras eficientes con rentabilidad (por ejemplo, SIALP, Contigo Futuro, Plan garantizado de Inversión, Ahorro Garantizado Extra, Flexicuenta) para protegerlo del efecto invisible de la devaluacion por inflacion y potenciar tu crecimiento.`;
     const advisoryLines = doc.splitTextToSize(advisoryText, W - 8);
     doc.text(advisoryLines, M + 4, boxY + 10);
     

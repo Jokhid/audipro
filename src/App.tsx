@@ -643,11 +643,11 @@ export default function App() {
                   <strong>¿Por qué se sugiere esto?</strong> Un fondo de reserva de entre 6 y 9 meses de gastos fijos (rango sugerido: <strong>{formatCurrency(expenses.total * 6)}</strong> - <strong>{formatCurrency(expenses.total * 9)}</strong>) asegura que puedas afrontar crisis empresariales, desempleo o accidentes sobrevenidos sin endeudarte de forma perjudicial ni tener que liquidar de forma prematura otras inversiones a largo plazo.
                 </div>
                 {liquidity.mesesCubiertos > 9 && (
-                  <div className="mt-3 p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-xl space-y-3">
+                  <div className="mt-3 p-3.5 bg-white border border-[#C5A566]/30 rounded-xl space-y-3 shadow-xs">
                     <div className="flex items-start gap-2">
                       <Info className="h-4.5 w-4.5 text-[#C5A566] shrink-0 mt-0.5" />
                       <div className="text-left text-xs">
-                        <h4 className="font-bold text-amber-900 uppercase tracking-wider text-[10.5px]">Optimización de Exceso de Liquidez</h4>
+                        <h4 className="font-bold text-[#A8833F] uppercase tracking-wider text-[10.5px]">Optimización de Exceso de Liquidez</h4>
                         <p className="mt-1 text-slate-700 leading-relaxed font-medium">
                           Tu fondo de emergencia de <strong>{formatCurrency(liquidity.dineroBanco)}</strong> supera los 9 meses de gastos cubiertos (máximo recomendado: <strong>{formatCurrency(expenses.total * 9)}</strong>). 
                           Dispones de un excedente parado de <strong className="text-emerald-700">{formatCurrency(liquidity.dineroBanco - expenses.total * 9)}</strong>.
