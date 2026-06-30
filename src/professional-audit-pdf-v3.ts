@@ -569,10 +569,12 @@ function drawExcessLiquidityChart(
   const points = sampleYears.map(year => {
     const parado = excessValue;
     const invertido = Math.round(excessValue * Math.pow(1.06, year));
+    const poderAdquisitivo = Math.round(excessValue / Math.pow(1.025, year));
     return {
       year,
       parado,
-      invertido
+      invertido,
+      poderAdquisitivo
     };
   });
 
@@ -597,6 +599,8 @@ function drawExcessLiquidityChart(
   const totalBarWidth = spacing * 0.6;
   const singleBarWidth = totalBarWidth / 2;
 
+  const linePoints: { x: number; y: number; val: number }[] = [];
+
   points.forEach((pt, index) => {
     const xBase = chartX + index * spacing + (spacing - totalBarWidth) / 2;
 
@@ -620,6 +624,12 @@ function drawExcessLiquidityChart(
     doc.setTextColor(...SLATE);
     doc.text(money(pt.invertido), iX + (singleBarWidth / 2), iY - 1, { align: 'center' });
 
+    // Collect line point (center of the year section)
+    const xCenter = xBase + totalBarWidth / 2;
+    const poderHeight = scale(pt.poderAdquisitivo);
+    const pPowerY = chartY + 10 + chartH - poderHeight;
+    linePoints.push({ x: xCenter, y: pPowerY, val: pt.poderAdquisitivo });
+
     // X-axis label
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(6.5);
@@ -627,18 +637,42 @@ function drawExcessLiquidityChart(
     doc.text(`Año ${pt.year}`, xBase + (totalBarWidth / 2), chartY + 10 + chartH + 3.5, { align: 'center' });
   });
 
+  // Draw red line representing purchasing power (-2.5% inflation)
+  doc.setDrawColor(220, 38, 38); // Red
+  doc.setLineWidth(0.6);
+  for (let i = 0; i < linePoints.length - 1; i++) {
+    const p1 = linePoints[i];
+    const p2 = linePoints[i + 1];
+    doc.line(p1.x, p1.y, p2.x, p2.y);
+  }
+
+  // Draw red dots on line points and text labels
+  linePoints.forEach((p) => {
+    doc.setFillColor(220, 38, 38);
+    doc.circle(p.x, p.y, 0.8, 'F');
+
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(4.5);
+    doc.setTextColor(185, 28, 28); // Dark red
+    doc.text(money(p.val), p.x, p.y + 2.8, { align: 'center' });
+  });
+
   // Legend at bottom
   const legendY = chartY + 10 + chartH + 8;
   doc.setFillColor(156, 163, 175);
-  doc.rect(M + 25, legendY, 3, 3, 'F');
+  doc.rect(M + 5, legendY, 3, 3, 'F');
   doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(5.5);
+  doc.setFontSize(5.2);
   doc.setTextColor(...MUTED);
-  doc.text('Dinero Parado (0% rentabilidad)', M + 30, legendY + 2.4);
+  doc.text('Dinero Parado (0% rentabilidad)', M + 9, legendY + 2.4);
+
+  doc.setFillColor(220, 38, 38);
+  doc.rect(M + 58, legendY, 3, 3, 'F');
+  doc.text('Poder Adquisitivo (Inflación 2.5%)', M + 62, legendY + 2.4);
 
   doc.setFillColor(...GREEN);
-  doc.rect(M + 75, legendY, 3, 3, 'F');
-  doc.text('Inversión Proyectada al 6% anual compuesto', M + 80, legendY + 2.4);
+  doc.rect(M + 115, legendY, 3, 3, 'F');
+  doc.text('Inversión Proyectada al 6% anual', M + 119, legendY + 2.4);
 
   state.y += chartH + 28; // Espaciado posterior
 }
@@ -841,7 +875,6 @@ async function generatePdf() {
   // ==========================================
   newPage(doc, state, 'Índice de Contenidos');
   heading(doc, state, 'ÍNDICE DE CONTENIDOS DEL INFORME');
-  paragraph(doc, state, 'Este informe estratégico de auditoría patrimonial detalla las coberturas previsionales públicas vigentes de la Seguridad Social española y su brecha frente a las necesidades fácticas familiares. Los apartados que componen este documento son:');
   sectionDivider(doc, state);
 
   const indexItems = [
@@ -1231,6 +1264,13 @@ async function generatePdf() {
     metrics.expenses.total,
     'Gastos fijos'
   );
+
+  heading(doc, state, 'Cálculo Didáctico de la Base Reguladora (B.R.)', 9);
+  paragraph(doc, state, 'La Base Reguladora es el eje técnico que determina la cuantía final de cada subsidio o pensión pública en España. Su cálculo se realiza de forma diferenciada según la contingencia:');
+  paragraph(doc, state, '• Incapacidad Temporal (Baja Laboral): Se calcula con la base de cotización de contingencias comunes o profesionales del mes previo al hecho causante. Para enfermedad común, se divide entre 30 (salario mensual). Para contingencias profesionales, se descuentan las horas extraordinarias y se prorratean las cotizadas en el año anterior.');
+  paragraph(doc, state, '• Incapacidad Permanente (Invalidez): En contingencia común, resulta del promedio ponderado por el IPC de las bases de cotización de los últimos años (de 8 a 24 años, según edad y cotización). En accidentes laborales, se calcula según los salarios reales del año anterior mediante el cociente de dividir el sueldo y los pluses anuales correspondientes.');
+  paragraph(doc, state, '• Pensión de Viudedad: Se determina a partir de la Base Reguladora de la persona fallecida. Si el fallecido era trabajador activo por contingencia común, se calcula dividiendo entre 28 la suma de las bases de cotización de un período de 24 meses ininterrumpidos elegido dentro de los 15 años previos.');
+  paragraph(doc, state, '• Pensión de Jubilación: Se computa dividiendo entre 350 la suma de las bases de cotización de los últimos 25 años (300 bases mensuales) anteriores a la fecha de jubilación. Las bases más antiguas se actualizan por inflación (excepto los 2 últimos años). Al resultado obtenido se le aplica un porcentaje corrector según los años cotizados totales (escalado del 50% al 100%).');
 
   // ==========================================
   // PAGE 6: PROTECCIÓN FAMILIAR Y RETIRO

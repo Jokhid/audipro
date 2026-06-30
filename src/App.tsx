@@ -71,8 +71,55 @@ const brand = {
   green: "#16A34A" 
 };
 
-const logoSvg = encodeURIComponent(`<svg width="120" height="140" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="8" width="18" height="124" fill="#fff"/><rect x="95" y="8" width="18" height="124" fill="#fff"/><rect x="52" y="86" width="16" height="46" fill="#fff"/><circle cx="60" cy="70" r="27" fill="#C5A566"/></svg>`);
-const brandLogo = `data:image/svg+xml;charset=utf-8,${logoSvg}`;
+const BrandLogo = ({ className = "h-16 w-14" }: { className?: string }) => (
+  <svg
+    className={className}
+    viewBox="0 0 120 140"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Left bracket: C-shape bracket with serifs facing right */}
+    <path
+      d="M 28 10 H 4 V 22 H 14 V 118 H 4 V 130 H 28 Z"
+      fill="#ffffff"
+      stroke="#002D62"
+      strokeWidth="4"
+      strokeLinejoin="miter"
+    />
+    {/* Right bracket: C-shape bracket with serifs facing left */}
+    <path
+      d="M 92 10 H 116 V 22 H 106 V 118 H 116 V 130 H 92 Z"
+      fill="#ffffff"
+      stroke="#002D62"
+      strokeWidth="4"
+      strokeLinejoin="miter"
+    />
+    {/* Top center pillar */}
+    <rect
+      x="53"
+      y="10"
+      width="14"
+      height="28"
+      fill="#ffffff"
+      stroke="#002D62"
+      strokeWidth="4"
+      strokeLinejoin="miter"
+    />
+    {/* Bottom center pillar */}
+    <rect
+      x="53"
+      y="102"
+      width="14"
+      height="28"
+      fill="#ffffff"
+      stroke="#002D62"
+      strokeWidth="4"
+      strokeLinejoin="miter"
+    />
+    {/* Center circle: completely ocher, no orange outline */}
+    <circle cx="60" cy="70" r="23" fill="#C5A566" />
+  </svg>
+);
 
 const initialClientData: ClientData = {
   // Básicos (manteniendo compatibilidad)
@@ -232,7 +279,8 @@ export default function App() {
       data.push({
         year: `Año ${year}`,
         parado: Math.round(excess),
-        invertido: Math.round(excess * Math.pow(1.06, year))
+        invertido: Math.round(excess * Math.pow(1.06, year)),
+        poderAdquisitivo: Math.round(excess / Math.pow(1.025, year))
       });
     }
     return data;
@@ -436,7 +484,7 @@ export default function App() {
       <header className="sticky top-0 z-50 bg-[#1A1A1A] text-white border-b border-white/10 shadow-md">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <img src={brandLogo} alt="Logo" className="h-16 w-14 object-contain" />
+            <BrandLogo className="h-16 w-14 flex-shrink-0" />
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#C5A566]">Auditoría Patrimonial y de Previsión Familiar</p>
               <h1 className="text-xl font-black text-white sm:text-2xl">JOSÉ CARLOS HIDALGO</h1>
@@ -672,6 +720,10 @@ export default function App() {
                                 <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
                                 <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                               </linearGradient>
+                              <linearGradient id="colorPoderAdquisitivo" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15}/>
+                                <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                              </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="year" stroke="#94a3b8" tickLine={false} />
@@ -682,6 +734,7 @@ export default function App() {
                             />
                             <Legend verticalAlign="top" height={20} iconSize={8} />
                             <Area type="monotone" name="Dinero Parado (0%)" dataKey="parado" stroke="#94a3b8" strokeWidth={1.5} fillOpacity={1} fill="url(#colorParado)" />
+                            <Area type="monotone" name="Poder Adquisitivo (-2.5% Inflación)" dataKey="poderAdquisitivo" stroke="#ef4444" strokeWidth={1.5} fillOpacity={1} fill="url(#colorPoderAdquisitivo)" />
                             <Area type="monotone" name="Proyección (6%)" dataKey="invertido" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorInvertido)" />
                           </AreaChart>
                         </ResponsiveContainer>
@@ -991,6 +1044,38 @@ export default function App() {
                       options={["Si", "No", "Pendiente"]} 
                       onChange={v => updateField("seguroPrivadoBaja", v)} 
                     />
+                  </div>
+
+                  <div className="mt-4 border-t border-slate-200/60 pt-4">
+                    <details className="group border border-slate-200/80 rounded-lg bg-slate-50/50 overflow-hidden cursor-pointer transition-colors duration-200 hover:bg-slate-50">
+                      <summary className="flex justify-between items-center p-3 font-bold text-xs text-slate-700 uppercase tracking-wide select-none">
+                        <span>¿Cómo se calcula la Base Reguladora (B.R.)?</span>
+                        <span className="transition-transform duration-200 group-open:rotate-180">▼</span>
+                      </summary>
+                      <div className="p-3 border-t border-slate-200/60 text-xs text-slate-600 space-y-3 leading-relaxed">
+                        <p>
+                          La <strong>Base Reguladora (B.R.)</strong> es el eje técnico que determina la cuantía final de cada subsidio o pensión pública en España:
+                        </p>
+                        <div className="space-y-2 pl-1.5 border-l-2 border-[#C5A566]/60">
+                          <div>
+                            <strong className="text-slate-800 block font-semibold">1. Incapacidad Temporal (Baja Laboral):</strong>
+                            <span>Para enfermedad común, se divide la base de cotización de contingencias comunes del mes previo por 30 (salario mensual). En contingencia profesional, se descuentan las horas extras y se promedian las del año anterior.</span>
+                          </div>
+                          <div>
+                            <strong className="text-slate-800 block font-semibold">2. Incapacidad Permanente (Invalidez):</strong>
+                            <span>En contingencia común, resulta del promedio ponderado (actualizado por inflación) de las bases de cotización de los últimos años (de 8 a 24 años según edad). En accidente de trabajo, se calcula sobre salarios reales anuales previos.</span>
+                          </div>
+                          <div>
+                            <strong className="text-slate-800 block font-semibold">3. Pensión de Viudedad:</strong>
+                    <span>Si el causante estaba activo, se divide por 28 la suma de las bases de cotización de 24 meses ininterrumpidos de los últimos 15 años.</span>
+                          </div>
+                          <div>
+                            <strong className="text-slate-800 block font-semibold">4. Pensión de Jubilación:</strong>
+                            <span>Es el cociente de dividir entre 350 las bases de cotización de los últimos 25 años (300 meses). Las bases antiguas (salvo los 2 últimos años) se actualizan con el IPC.</span>
+                          </div>
+                        </div>
+                      </div>
+                    </details>
                   </div>
                 </div>
               )}
@@ -1399,7 +1484,7 @@ export default function App() {
       <footer className="bg-[#1A1A1A] text-white py-12 px-6 mt-16 border-t border-white/10 shadow-inner">
         <div className="mx-auto flex max-w-7xl flex-col gap-8 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4">
-            <img src={brandLogo} alt="Logo" className="h-16 w-14 object-contain" />
+            <BrandLogo className="h-16 w-14 flex-shrink-0" />
             <div>
               <p className="text-lg font-black text-white">JOSÉ CARLOS HIDALGO</p>
               <p className="text-xs text-white/50">Consultor Financiero Registrado e Intermediario Hipotecario</p>
