@@ -283,7 +283,7 @@ export interface RetirementScenario {
   gastoReferencia: number;
   brecha: number;
   capitalNecesario: number;
-  fiabilidad: "Baja" | "Media" | "Alta";
+  riesgo: "Alto" | "Medio" | "Bajo";
   hipotesis: string;
   rentasConsideradas: number;
   otrosIngresos: number;
@@ -360,7 +360,7 @@ export function calculateRetirementScenarios(data: ClientData, totalExpenses: nu
       gastoReferencia: gastoConservador,
       brecha: brechaConservador,
       capitalNecesario: brechaConservador * 12 * 23,
-      fiabilidad: "Baja",
+      riesgo: "Alto",
       hipotesis: "Lagunas de cotización futuras, base de cotización reducida e impacto de la inflación acumulada del 10% en gastos.",
       rentasConsideradas: rentasConsumibles,
       otrosIngresos
@@ -377,7 +377,7 @@ export function calculateRetirementScenarios(data: ClientData, totalExpenses: nu
       gastoReferencia: gastoCentral,
       brecha: brechaCentral,
       capitalNecesario: brechaCentral * 12 * 23,
-      fiabilidad: "Media",
+      riesgo: "Medio",
       hipotesis: "Continuidad laboral manteniendo la base actual, con pensión neta estimada tras un 15% de IRPF medio.",
       rentasConsideradas: rentasConsumibles,
       otrosIngresos
@@ -394,7 +394,7 @@ export function calculateRetirementScenarios(data: ClientData, totalExpenses: nu
       gastoReferencia: gastoOptimista,
       brecha: brechaOptimista,
       capitalNecesario: brechaOptimista * 12 * 23,
-      fiabilidad: "Alta",
+      riesgo: "Bajo",
       hipotesis: "Crecimiento profesional y base reguladora un 15% superior, proyectando un nivel de gastos premium (120%).",
       rentasConsideradas: rentasConsumibles,
       otrosIngresos

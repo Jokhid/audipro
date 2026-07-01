@@ -743,13 +743,13 @@ function drawTable(
         doc.setFont('Helvetica', 'bold');
         if (val === 'Viable' || val === 'Cubierto' || val === 'Bajo' || val === 'Leve' || val === 'PROTEGIDO' || (val === 'Baja' && headers[i] === 'PRIORIDAD')) doc.setTextColor(...GREEN);
         if (val === 'Alta') {
-          if (headers[i] === 'FIABILIDAD') {
+          if (headers[i] === 'RIESGO') {
             doc.setTextColor(...GREEN);
           } else {
             doc.setTextColor(...RED);
           }
         }
-      } else if (val === 'Ajustado' || val === 'Media' || val === 'Moderada' || val === 'Pendiente' || val === 'ALERTA') {
+      } else if (val === 'Ajustado' || val === 'Media' || val === 'Medio' || val === 'Moderada' || val === 'Pendiente' || val === 'ALERTA') {
         doc.setFont('Helvetica', 'bold');
         doc.setTextColor(...ORANGE);
       } else if (val === 'No viable' || val === 'Alto' || val === 'Grave' || (val === 'Baja' && headers[i] !== 'PRIORIDAD') || val === 'VULNERABLE') {
@@ -1288,20 +1288,20 @@ async function generatePdf() {
   const isSingleAndChildless = (formData.estadoCivil === "Soltero/a") && (childrenCount === 0);
 
   const prevRows = [
-    ['Baja Laboral (enfermedad común, tramo 60% B.R.)', money(metrics.temporaryDisability.tramo60Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo60Brecha)}`, metrics.temporaryDisability.tramo60Monto >= metrics.expenses.total ? 'Alta' : 'Media', isAutonomo ? 'Contratar subsidio privado' : 'Cubierto por Régimen General'],
-    ['Baja Laboral (tramo 75% B.R.)', money(metrics.temporaryDisability.tramo75Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo75Brecha)}`, metrics.temporaryDisability.tramo75Monto >= metrics.expenses.total ? 'Alta' : 'Media', 'Suficiente solo en tramo largo'],
-    ['Invalidez Permanente Total habitual (IPT, 55% B.R.)', money(metrics.disability.iptMonto), money(metrics.expenses.total), `-${money(metrics.disability.iptBrecha)}`, metrics.disability.iptMonto >= metrics.expenses.total ? 'Alta' : 'Baja', 'Revisar capital por invalidez'],
-    ['Invalidez Permanente Absoluta total (IPA, 100% B.R.)', money(metrics.disability.ipaMonto), money(metrics.expenses.total), `-${money(metrics.disability.ipaBrecha)}`, metrics.disability.ipaMonto >= metrics.expenses.total ? 'Alta' : 'Media', 'Cubierto parcialmente'],
+    ['Baja Laboral (enfermedad común, tramo 60% B.R.)', money(metrics.temporaryDisability.tramo60Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo60Brecha)}`, metrics.temporaryDisability.tramo60Monto >= metrics.expenses.total ? 'Bajo' : 'Medio', isAutonomo ? 'Contratar subsidio privado' : 'Cubierto por Régimen General'],
+    ['Baja Laboral (tramo 75% B.R.)', money(metrics.temporaryDisability.tramo75Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo75Brecha)}`, metrics.temporaryDisability.tramo75Monto >= metrics.expenses.total ? 'Bajo' : 'Medio', 'Suficiente solo en tramo largo'],
+    ['Invalidez Permanente Total habitual (IPT, 55% B.R.)', money(metrics.disability.iptMonto), money(metrics.expenses.total), `-${money(metrics.disability.iptBrecha)}`, metrics.disability.iptMonto >= metrics.expenses.total ? 'Bajo' : 'Alto', 'Revisar capital por invalidez'],
+    ['Invalidez Permanente Absoluta total (IPA, 100% B.R.)', money(metrics.disability.ipaMonto), money(metrics.expenses.total), `-${money(metrics.disability.ipaBrecha)}`, metrics.disability.ipaMonto >= metrics.expenses.total ? 'Bajo' : 'Medio', 'Cubierto parcialmente'],
     ...(isSingleAndChildless ? [] : [
-      ['Pensión de Viudedad (cónyuge computable, 52% B.R.)', money(metrics.survivorBenefits.viudedadMonto), money(metrics.expenses.total), `-${money(metrics.survivorBenefits.viudedadBrechaAislada)}`, metrics.survivorBenefits.viudedadMonto >= metrics.expenses.total ? 'Alta' : 'Baja', 'Requiere seguro de vida'],
-      ['Pensión de Orfandad (todos los hijos, 20% B.R. por hijo)', money(metrics.survivorBenefits.orfandadMonto), money(metrics.expenses.total), `-${money(Math.max(0, metrics.expenses.total - metrics.survivorBenefits.orfandadMonto))}`, metrics.survivorBenefits.orfandadMonto >= metrics.expenses.total ? 'Alta' : 'Media', 'Subsidio complementario de estudios']
+      ['Pensión de Viudedad (cónyuge computable, 52% B.R.)', money(metrics.survivorBenefits.viudedadMonto), money(metrics.expenses.total), `-${money(metrics.survivorBenefits.viudedadBrechaAislada)}`, metrics.survivorBenefits.viudedadMonto >= metrics.expenses.total ? 'Bajo' : 'Alto', 'Requiere seguro de vida'],
+      ['Pensión de Orfandad (todos los hijos, 20% B.R. por hijo)', money(metrics.survivorBenefits.orfandadMonto), money(metrics.expenses.total), `-${money(Math.max(0, metrics.expenses.total - metrics.survivorBenefits.orfandadMonto))}`, metrics.survivorBenefits.orfandadMonto >= metrics.expenses.total ? 'Bajo' : 'Medio', 'Subsidio complementario de estudios']
     ]),
-    ['Pensión de Jubilación Ordinaria previsible (hasta 100% B.R.)', money(metrics.retirementGap.pensionEstimada), money(metrics.expenses.total), `-${money(metrics.retirementGap.brechaMensual)}`, metrics.retirementGap.pensionEstimada >= metrics.expenses.total ? 'Alta' : 'Media', 'Planificar ahorro indexado']
+    ['Pensión de Jubilación Ordinaria previsible (hasta 100% B.R.)', money(metrics.retirementGap.pensionEstimada), money(metrics.expenses.total), `-${money(metrics.retirementGap.brechaMensual)}`, metrics.retirementGap.pensionEstimada >= metrics.expenses.total ? 'Bajo' : 'Medio', 'Planificar ahorro indexado']
   ];
   drawTable(
     doc,
     state,
-    ['CONTINGENCIA S.S.', 'ESTIMACIÓN', 'GASTO DE REFERENCIA', 'BRECHA MENSUAL', 'FIABILIDAD', 'ACCIÓN RECOMENDADA'],
+    ['CONTINGENCIA S.S.', 'ESTIMACIÓN', 'GASTO DE REFERENCIA', 'BRECHA MENSUAL', 'RIESGO', 'ACCIÓN RECOMENDADA'],
     [42, 24, 30, 28, 20, 38],
     prevRows,
     ['left', 'right', 'right', 'right', 'center', 'left'],
@@ -1309,13 +1309,13 @@ async function generatePdf() {
   );
 
   // Add the native vector chart
-  const categories = ['Baja (60%)', 'Baja (75%)', 'Invalidez IPT', 'Invalidez IPA', ...(isSingleAndChildless ? [] : ['Viudedad']), 'Jubilación'];
+  const categories = ['Baja (60%)', 'Baja (75%)', 'Invalidez IPT', 'Invalidez IPA', ...(isSingleAndChildless ? [] : ['Prest. Familia']), 'Jubilación'];
   const values = [
     metrics.temporaryDisability.tramo60Monto,
     metrics.temporaryDisability.tramo75Monto,
     metrics.disability.iptMonto,
     metrics.disability.ipaMonto,
-    ...(isSingleAndChildless ? [] : [metrics.survivorBenefits.viudedadMonto]),
+    ...(isSingleAndChildless ? [] : [metrics.survivorBenefits.viudedadMonto + metrics.survivorBenefits.orfandadMonto]),
     metrics.retirementGap.pensionEstimada
   ];
   drawVectorChart(
@@ -1387,7 +1387,40 @@ async function generatePdf() {
     ['left', 'right', 'right', 'right', 'right', 'right', 'right']
   );
 
-  paragraph(doc, state, 'Justificación del Gasto de Referencia: En planificación patrimonial profesional, presupuestar la jubilación con el gasto de supervivencia básico actual (p. ej. 1.600 €) es un error grave. El gasto de referencia se calcula con una tasa de reemplazo idónea del 85% de tus ingresos netos ordinarios actuales (o tus gastos fijos netos de deudas amortizadas, lo que sea mayor). Al jubilarse, disponer de más tiempo libre eleva de forma natural las necesidades y actividades de ocio, viajes y salud. Además, los escenarios Conservador (+10%) y Optimista (+20%) añaden un margen de seguridad esencial frente a la pérdida acumulada de poder adquisitivo por inflación a lo largo de un horizonte de jubilación de más de 23 años.');
+  const explanationText = 'En planificación patrimonial profesional, presupuestar la jubilación con el gasto de supervivencia básico actual (p. ej. 1.600 €) es un error grave. El gasto de referencia se calcula con una tasa de reemplazo idónea del 85% de tus ingresos netos ordinarios actuales (o tus gastos fijos netos de deudas amortizadas, lo que sea mayor).\n\nAl jubilarse, disponer de más tiempo libre eleva de forma natural las necesidades y actividades de ocio, viajes y salud. Además, los escenarios Conservador (+10%) y Optimista (+20%) añaden un margen de seguridad esencial frente a la pérdida acumulada de poder adquisitivo por inflación a lo largo de un horizonte de jubilación de más de 23 años.';
+  const infoTitle = '¿POR QUÉ SE ELEVA EL GASTO DE REFERENCIA EN JUBILACIÓN?';
+  
+  // Set font style and size first so splitTextToSize accurately computes lines
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(6.8);
+  const infoLines = doc.splitTextToSize(explanationText, W - 10) as string[];
+  const lineSpacing = 3.6;
+  const paddingY = 8;
+  const boxHeight = 6 + lineSpacing * infoLines.length + paddingY;
+
+  ensureSpace(doc, state, boxHeight + 10);
+  const boxY = state.y;
+  
+  doc.setFillColor(254, 253, 240); // Soft amber light bg
+  doc.setDrawColor(245, 158, 11);    // Soft amber border
+  doc.roundedRect(M, boxY, W, boxHeight, 1.5, 1.5, 'FD');
+  
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(180, 83, 9); // Dark amber text
+  doc.text(infoTitle, M + 5, boxY + 6.0);
+  
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(...BLACK);
+  
+  let lineY = boxY + 11.0;
+  for (let i = 0; i < infoLines.length; i++) {
+    doc.text(infoLines[i], M + 5, lineY);
+    lineY += lineSpacing;
+  }
+  
+  state.y += boxHeight + 8;
 
   // AddStacked chart for retirement scenarios
   const scens = [

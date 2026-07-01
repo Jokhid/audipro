@@ -502,13 +502,16 @@ export default function App() {
     { subject: "Sucesorio", score: scores.legal * 10 }
   ];
 
+  const isSingleAndChildless = (formData.estadoCivil === "Soltero/a") && (formData.hijosMenores25 === 0);
+
   // Recharts Benefit vs Expenses data
   const benefitBarData = [
     { name: "Baja temporal", Prestacion: Math.round(temporaryDisability.tramo60Monto), Gastos: Math.round(expenses.total) },
     { name: "Inv. Profesional (IPT)", Prestacion: Math.round(permanentDisability.iptMonto), Gastos: Math.round(expenses.total) },
     { name: "Inv. Absoluta (IPA)", Prestacion: Math.round(permanentDisability.ipaMonto), Gastos: Math.round(expenses.total) },
-    { name: "Viudedad", Prestacion: Math.round(survivorBenefits.viudedadMonto), Gastos: Math.round(expenses.total) },
-    { name: "Orfandad", Prestacion: Math.round(survivorBenefits.orfandadMonto), Gastos: Math.round(expenses.total) },
+    ...(isSingleAndChildless ? [] : [
+      { name: "Prest. Familiares", Prestacion: Math.round(survivorBenefits.viudedadMonto + survivorBenefits.orfandadMonto), Gastos: Math.round(expenses.total) }
+    ]),
     { name: "Jubilación", Prestacion: Math.round(centralScenario.pensionEstimada), Gastos: Math.round(expenses.total) }
   ];
 
@@ -1441,9 +1444,9 @@ export default function App() {
                   <div className="flex justify-between items-center">
                     <h3 className="font-black text-slate-900 text-sm uppercase text-[#C5A566]">{s.name}</h3>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                      s.fiabilidad === "Alta" ? "bg-emerald-100 text-emerald-800" :
-                      s.fiabilidad === "Media" ? "bg-yellow-300 text-black font-semibold shadow-sm" : "bg-red-100 text-red-800"
-                    }`}>Fiabilidad: {s.fiabilidad}</span>
+                      s.riesgo === "Bajo" ? "bg-emerald-100 text-emerald-800" :
+                      s.riesgo === "Medio" ? "bg-yellow-300 text-black font-semibold shadow-sm" : "bg-red-100 text-red-800"
+                    }`}>Riesgo: {s.riesgo}</span>
                   </div>
                   <p className="text-[10px] text-slate-500 italic mt-1 leading-relaxed">{s.hipotesis}</p>
                   
