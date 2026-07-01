@@ -1387,6 +1387,8 @@ async function generatePdf() {
     ['left', 'right', 'right', 'right', 'right', 'right', 'right']
   );
 
+  paragraph(doc, state, 'Justificación del Gasto de Referencia: En planificación patrimonial profesional, presupuestar la jubilación con el gasto de supervivencia básico actual (p. ej. 1.600 €) es un error grave. El gasto de referencia se calcula con una tasa de reemplazo idónea del 85% de tus ingresos netos ordinarios actuales (o tus gastos fijos netos de deudas amortizadas, lo que sea mayor). Al jubilarse, disponer de más tiempo libre eleva de forma natural las necesidades y actividades de ocio, viajes y salud. Además, los escenarios Conservador (+10%) y Optimista (+20%) añaden un margen de seguridad esencial frente a la pérdida acumulada de poder adquisitivo por inflación a lo largo de un horizonte de jubilación de más de 23 años.');
+
   // AddStacked chart for retirement scenarios
   const scens = [
     { name: 'Conservador', pension: retirementScenarios?.[0]?.pensionEstimada || 0, rents: Number(retirementScenarios?.[0]?.rentasConsideradas || 0) },

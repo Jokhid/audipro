@@ -1479,6 +1479,18 @@ export default function App() {
             ))}
           </div>
 
+          <div className="bg-amber-50 border border-amber-200 text-slate-800 text-xs rounded-lg p-4 space-y-2">
+            <p className="font-bold text-amber-950 flex items-center gap-1.5">
+              <Info className="h-4 w-4 text-[#C5A566]" /> ¿Por qué se eleva el Gasto de Referencia en Jubilación?
+            </p>
+            <p className="leading-relaxed">
+              En planificación patrimonial profesional, presupuestar la jubilación basándose únicamente en el gasto actual de supervivencia básica (por ejemplo, 1.600 €) es un error crítico. El <strong>gasto de referencia</strong> se calcula aplicando una <strong>tasa de reemplazo idónea del 85% de tus ingresos netos ordinarios actuales</strong> (o tus gastos fijos netos de deudas que ya se habrán amortizado antes de jubilarte, lo que sea mayor).
+            </p>
+            <p className="leading-relaxed">
+              Durante el retiro, disponer de mucho más tiempo libre incrementa de forma natural las necesidades y el presupuesto destinado a ocio, viajes, actividades sociales y cobertura de salud para el cuidado de la dependencia. Además, los escenarios de estrés <strong>Conservador (+10%)</strong> y <strong>Optimista (+20%)</strong> actúan como un margen de seguridad esencial frente a la pérdida acumulada de poder adquisitivo por inflación a lo largo de más de 23 años de jubilación.
+            </p>
+          </div>
+
           <div className="bg-yellow-100/60 border border-yellow-300 text-slate-800 text-xs rounded-lg p-4 space-y-1">
             <p className="font-bold text-black flex items-center gap-1.5">
               <AlertCircle className="h-4 w-4" /> Nota Metodológica Obligatoria:
