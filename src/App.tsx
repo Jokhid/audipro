@@ -1037,10 +1037,15 @@ export default function App() {
                     <p className="mt-1 text-white/90">Si falta la deuda pendiente, el cálculo del "Capital Familiar Objetivo" de protección de fallecimiento aparecerá como pendiente de validar, subestimando la necesidad de vida.</p>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-2">
-                    <NumberInput label="Hipoteca (€)" value={formData.cuotaHipoteca} onChange={v => updateField("cuotaHipoteca", v)} />
-                    <NumberInput label="Préstamos (€)" value={formData.cuotaPrestamos} onChange={v => updateField("cuotaPrestamos", v)} />
-                    <NumberInput label="Tarjetas (€)" value={formData.cuotaTarjetas} onChange={v => updateField("cuotaTarjetas", v)} />
+                  <div className="pt-2">
+                    <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-3">
+                      HIPOTECA, PRÉSTAMOS Y TARJETAS
+                    </h3>
+                    <div className="grid grid-cols-1 gap-4">
+                      <NumberInput label="Hipoteca (€)" value={formData.cuotaHipoteca} onChange={v => updateField("cuotaHipoteca", v)} />
+                      <NumberInput label="Préstamos (€)" value={formData.cuotaPrestamos} onChange={v => updateField("cuotaPrestamos", v)} />
+                      <NumberInput label="Tarjetas (€)" value={formData.cuotaTarjetas} onChange={v => updateField("cuotaTarjetas", v)} />
+                    </div>
                   </div>
 
                   <NumberInput label="Deuda Pendiente Total (€)" value={formData.deudaPendienteTotal} onChange={v => updateField("deudaPendienteTotal", v)} />
@@ -1630,7 +1635,7 @@ function NumberInput({ label, value, onChange }: { label: string; value: number;
   return (
     <label className="block">
       <span className="mb-1 flex items-center justify-between text-[11px] font-bold uppercase text-slate-400">
-        <span className="truncate mr-1">{label}</span>
+        <span className="mr-1">{label}</span>
         <span className="flex items-center gap-1.5 flex-shrink-0">
           {/* Small NO / PND toggle when value is 0 */}
           {value === 0 && (

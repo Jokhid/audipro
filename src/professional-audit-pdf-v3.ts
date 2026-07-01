@@ -1677,7 +1677,7 @@ async function generatePdf() {
   state.y += p5Lines.length * 3.8 + 12;
 
   // Closing Note block
-  ensureSpace(doc, state, 30);
+  ensureSpace(doc, state, 65);
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(8.2);
   doc.setTextColor(...SLATE);
@@ -1687,10 +1687,56 @@ async function generatePdf() {
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.2);
   doc.setTextColor(...BLACK);
-  const pMethod = 'Este diagnóstico representa una foto matemática rigurosa basada en el modelo legal y de previsión de la Seguridad Social de España. Para corregir las brechas identificadas, ordenar su patrimonio o formalizar los complementos de ahorro de jubilación, puede ponerse en contacto con José Carlos Hidalgo en josecarlos@hilolegal.es o en el teléfono 647 50 60 40.';
+  const pMethod = 'Este diagnóstico representa una foto matemática rigurosa basada en el modelo legal y de previsión de la Seguridad Social de España. Las proyecciones y estimaciones se realizan conforme a las bases vigentes y asunciones estándar de mercado.';
   const pMethodLines = doc.splitTextToSize(pMethod, W);
   doc.text(pMethodLines, M, state.y);
-  state.y += pMethodLines.length * 3.8 + 12;
+  state.y += pMethodLines.length * 3.8 + 8;
+
+  // Persuasive Advisory Block
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.2);
+  doc.setTextColor(...SLATE);
+  doc.text('ASESORAMIENTO PATRIMONIAL EXCLUSIVO', M, state.y);
+  state.y += 4.5;
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(...BLACK);
+  const pPersuasion = 'La resolución eficaz de las brechas de cobertura e ineficiencias financieras identificadas en este informe exige una planificación experta e integral. Como especialista en Gestión Patrimonial e Hipotecaria, soy tu mejor aliado para diseñar la estrategia óptima que blinde tu patrimonio, optimice tu financiación y garantice la tranquilidad absoluta de tu familia.';
+  const pPersuasionLines = doc.splitTextToSize(pPersuasion, W);
+  doc.text(pPersuasionLines, M, state.y);
+  state.y += pPersuasionLines.length * 3.8 + 8;
+
+  // Premium, exclusive business card of José Carlos Hidalgo (compact, centered)
+  const contactCardY = state.y;
+  const contactCardH = 22;
+  const contactCardX = M;
+  const contactCardW = W;
+
+  // Dark slate background with a gold border
+  doc.setFillColor(15, 23, 42); // SLATE
+  doc.setDrawColor(...GOLD);
+  doc.setLineWidth(0.5);
+  doc.rect(contactCardX, contactCardY, contactCardW, contactCardH, 'FD');
+
+  // Text inside card (Centered)
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(255, 255, 255); // White name
+  doc.text('JOSÉ CARLOS HIDALGO', contactCardX + contactCardW / 2, contactCardY + 6, { align: 'center' });
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...GOLD); // Gold subtitle
+  doc.text('Gestión Patrimonial e Hipotecaria', contactCardX + contactCardW / 2, contactCardY + 11.5, { align: 'center' });
+
+  // Contact line
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(203, 213, 225); // Light slate text
+  doc.text('Email: josecarlos@hilolegal.es   |   Teléfono: 647 50 60 40', contactCardX + contactCardW / 2, contactCardY + 17, { align: 'center' });
+
+  state.y += contactCardH + 8;
 
   footer(doc, state.page);
   doc.save(`informe-auditoria-profesional-${slug(clientName)}.pdf`);
