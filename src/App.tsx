@@ -1141,6 +1141,12 @@ export default function App() {
                       options={["consumo", "reinversion", "mixto", "desconocido"]} 
                       onChange={v => updateField("destinoRentasInmobiliarias", v)} 
                     />
+                    <SelectInput 
+                      label="Estrategia Activa vs Inflación" 
+                      value={formData.preguntas.p06} 
+                      options={["Si", "No"]} 
+                      onChange={v => updateQuestion("p06", v)} 
+                    />
                   </div>
                 </div>
               )}

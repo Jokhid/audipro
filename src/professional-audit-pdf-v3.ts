@@ -951,38 +951,6 @@ async function generatePdf() {
   paragraph(doc, state, 'La calificación sintética de seguridad mide la robustez de las finanzas personales frente a sucesos sobrevenidos como bajas médicas prolongadas, fallecimiento familiar, sobreapalancamiento o brechas de retiro.');
   sectionDivider(doc, state);
 
-  // Big Score Card
-  ensureSpace(doc, state, 24);
-  const scoreY = state.y;
-  doc.setFillColor(...BLACK);
-  doc.roundedRect(M, scoreY, 60, 20, 2, 2, 'F');
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.setTextColor(...GOLD);
-  doc.text('SEGURIDAD GLOBAL', M + 4, scoreY + 6);
-  doc.setFontSize(20);
-  doc.setTextColor(255, 255, 255);
-  doc.text(`${scores.globalScore} / 10`, M + 4, scoreY + 16);
-
-  // Summary box
-  doc.setFillColor(...LIGHT);
-  doc.setDrawColor(...BORDER);
-  doc.roundedRect(M + 65, scoreY, 117, 20, 2, 2, 'FD');
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.setTextColor(...SLATE);
-  doc.text('RECOMENDACIÓN GENERAL PROFESIONAL:', M + 69, scoreY + 5.5);
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(7.2);
-  doc.setTextColor(...MUTED);
-  const recTxt = `Con un puntaje global de ${scores.globalScore}/10, la planificación patrimonial de ${clientName} presenta áreas de vulnerabilidad crítica en protección por baja laboral y cobertura familiar que deben reforzarse con prioridad alta.`;
-  doc.text(doc.splitTextToSize(recTxt, 110), M + 69, scoreY + 10);
-  state.y += 24;
-
-  // 3 Risks & 3 Priorities
-  heading(doc, state, 'RIESGOS CRÍTICOS Y PRIORIDADES', 9.5);
-  const infoY = state.y;
-
   const isAutonomo = formData.regimenSeguridadSocial === "RETA (Autónomos)";
   const categoryDetails = [
     {
@@ -1037,6 +1005,38 @@ async function generatePdf() {
 
   // Sort by score ascending to find the three lowest-scoring categories
   const lowestThree = [...categoryDetails].sort((a, b) => a.score - b.score).slice(0, 3);
+
+  // Big Score Card
+  ensureSpace(doc, state, 24);
+  const scoreY = state.y;
+  doc.setFillColor(...BLACK);
+  doc.roundedRect(M, scoreY, 60, 20, 2, 2, 'F');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...GOLD);
+  doc.text('SEGURIDAD GLOBAL', M + 4, scoreY + 6);
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text(`${scores.globalScore} / 10`, M + 4, scoreY + 16);
+
+  // Summary box
+  doc.setFillColor(...LIGHT);
+  doc.setDrawColor(...BORDER);
+  doc.roundedRect(M + 65, scoreY, 117, 20, 2, 2, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...SLATE);
+  doc.text('RECOMENDACIÓN GENERAL PROFESIONAL:', M + 69, scoreY + 5.5);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(7.2);
+  doc.setTextColor(...MUTED);
+  const recTxt = `Para fortalecer el blindaje financiero (${scores.globalScore}/10) de ${clientName}, se recomienda prioritariamente: 1º) ${lowestThree[0].name}: ${lowestThree[0].action.replace(/\.$/, '')}. 2º) ${lowestThree[1].name}: ${lowestThree[1].action.replace(/\.$/, '')}. 3º) ${lowestThree[2].name}: ${lowestThree[2].action.replace(/\.$/, '')}.`;
+  doc.text(doc.splitTextToSize(recTxt, 110), M + 69, scoreY + 10);
+  state.y += 24;
+
+  // 3 Risks & 3 Priorities
+  heading(doc, state, 'RIESGOS CRÍTICOS Y PRIORIDADES', 9.5);
+  const infoY = state.y;
 
   // Left: Risks
   doc.setFillColor(254, 242, 242);
