@@ -982,6 +982,62 @@ async function generatePdf() {
   // 3 Risks & 3 Priorities
   heading(doc, state, 'RIESGOS CRÍTICOS Y PRIORIDADES', 9.5);
   const infoY = state.y;
+
+  const isAutonomo = formData.regimenSeguridadSocial === "RETA (Autónomos)";
+  const categoryDetails = [
+    {
+      name: 'Liquidez',
+      score: scores.fondo,
+      risk: `Fondo de reserva bajo frente a gastos familiares.`,
+      action: `Constituir colchón de reserva de 6 a 9 meses (${money(metrics.expenses.total * 6)} - ${money(metrics.expenses.total * 9)}).`
+    },
+    {
+      name: 'Baja Laboral',
+      score: scores.baja,
+      risk: `Déficit inicial por baja común de ${money(metrics.temporaryDisability.tramo60Brecha)}/mes.`,
+      action: isAutonomo ? `Contratar seguro de subsidio por incapacidad temporal.` : `Sin acción (cubierto por Régimen General).`
+    },
+    {
+      name: 'Incapacidad',
+      score: scores.incapacidad,
+      risk: `Brecha por invalidez de hasta ${money(metrics.disability.iptBrecha)}/mes.`,
+      action: `Revisar y contratar cobertura por incapacidad de vida.`
+    },
+    {
+      name: 'Protección Fam.',
+      score: scores.familia,
+      risk: `Déficit neto de protección familiar de ${money(metrics.familyNeed.deficitDeProteccion)}.`,
+      action: `Ampliar capital de vida hasta objetivo de ${money(metrics.familyNeed.capitalFamiliarObjetivo)}.`
+    },
+    {
+      name: 'Deuda',
+      score: scores.deuda,
+      risk: `Elevado endeudamiento del ${percent(metrics.debt.ratioSobreSalario * 100)} de ingresos.`,
+      action: `Amortizar deudas de forma acelerada y reducir cuotas.`
+    },
+    {
+      name: 'Retiro',
+      score: scores.jubilacion,
+      risk: `Brecha de jubilación fáctica de ${money(metrics.retirementGap.brechaMensual)}/mes.`,
+      action: `Ahorrar ${money(metrics.retirementGap.recommendedSaving)}/mes en plan indexado eficiente.`
+    },
+    {
+      name: 'Patrimonio',
+      score: scores.inflacion,
+      risk: `Excesivo capital inactivo ocioso expuesto a inflación.`,
+      action: `Invertir liquidez improductiva en activos con interés.`
+    },
+    {
+      name: 'Orden Legal',
+      score: scores.legal,
+      risk: `Falta de instrumentos de protección (Testamento y Poder).`,
+      action: `Formalizar testamento abierto y poder preventivo.`
+    }
+  ];
+
+  // Sort by score ascending to find the three lowest-scoring categories
+  const lowestThree = [...categoryDetails].sort((a, b) => a.score - b.score).slice(0, 3);
+
   // Left: Risks
   doc.setFillColor(254, 242, 242);
   doc.setDrawColor(252, 165, 165);
@@ -993,9 +1049,11 @@ async function generatePdf() {
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(6.8);
   doc.setTextColor(...BLACK);
-  doc.text(`1. Déficit inicial en baja temporal de ${money(metrics.temporaryDisability.tramo60Brecha)}/mes.`, M + 4, infoY + 11);
-  doc.text(`2. Ausencia de actas legales críticas (Testamento e Inventario).`, M + 4, infoY + 16);
-  doc.text(`3. Brecha de jubilación fáctica acumulada de ${money(metrics.retirementGap.capitalObjetivo)}.`, M + 4, infoY + 21);
+  lowestThree.forEach((item, idx) => {
+    const riskText = `${idx + 1}. [${item.name}] ${item.risk}`;
+    const riskLines = doc.splitTextToSize(riskText, 80);
+    doc.text(riskLines[0] || '', M + 4, infoY + 11 + idx * 5);
+  });
 
   // Right: Priorities
   doc.setFillColor(240, 253, 250);
@@ -1008,9 +1066,11 @@ async function generatePdf() {
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(6.8);
   doc.setTextColor(...BLACK);
-  doc.text('1. Contratar seguro de subsidio por incapacidad temporal.', M + 98, infoY + 11);
-  doc.text('2. Formalizar testamento abierto y poder preventivo notarial.', M + 98, infoY + 16);
-  doc.text(`3. Incrementar el ahorro sistemático a ${money(metrics.retirementGap.recommendedSaving)}/mes.`, M + 98, infoY + 21);
+  lowestThree.forEach((item, idx) => {
+    const actionText = `${idx + 1}. [${item.name}] ${item.action}`;
+    const actionLines = doc.splitTextToSize(actionText, 80);
+    doc.text(actionLines[0] || '', M + 98, infoY + 11 + idx * 5);
+  });
   state.y += 34;
 
   // Client data table
@@ -1213,7 +1273,7 @@ async function generatePdf() {
     state.y += 27;
     
     // Draw the 20-year projection chart of the excess!
-    drawExcessLiquidityChart(doc, state, 'PROYECCION DEL EXCESO DE LIQUIDEZ A 20 ANOS (COMPUESTO AL 6% ANUAL)', excessBanco);
+    drawExcessLiquidityChart(doc, state, 'PROYECCION DEL EXCESO DE LIQUIDEZ A 20 AÑOS (COMPUESTO AL 6% ANUAL)', excessBanco);
   }
 
   // ==========================================
@@ -1224,15 +1284,18 @@ async function generatePdf() {
   paragraph(doc, state, 'Las prestaciones públicas de la Seguridad Social española estimadas para cada contingencia del trabajador, comparadas frente al nivel fáctico de gastos familiares declarados.');
   sectionDivider(doc, state);
 
-  const isAutonomo = formData.regimenSeguridadSocial === "RETA (Autónomos)";
+  const childrenCount = typeof formData.hijosMenores25 === 'number' ? formData.hijosMenores25 : 0;
+  const isSingleAndChildless = (formData.estadoCivil === "Soltero/a") && (childrenCount === 0);
 
   const prevRows = [
     ['Baja Laboral (enfermedad común, tramo 60% B.R.)', money(metrics.temporaryDisability.tramo60Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo60Brecha)}`, metrics.temporaryDisability.tramo60Monto >= metrics.expenses.total ? 'Alta' : 'Media', isAutonomo ? 'Contratar subsidio privado' : 'Cubierto por Régimen General'],
     ['Baja Laboral (tramo 75% B.R.)', money(metrics.temporaryDisability.tramo75Monto), money(metrics.expenses.total), `-${money(metrics.temporaryDisability.tramo75Brecha)}`, metrics.temporaryDisability.tramo75Monto >= metrics.expenses.total ? 'Alta' : 'Media', 'Suficiente solo en tramo largo'],
     ['Invalidez Permanente Total habitual (IPT, 55% B.R.)', money(metrics.disability.iptMonto), money(metrics.expenses.total), `-${money(metrics.disability.iptBrecha)}`, metrics.disability.iptMonto >= metrics.expenses.total ? 'Alta' : 'Baja', 'Revisar capital por invalidez'],
     ['Invalidez Permanente Absoluta total (IPA, 100% B.R.)', money(metrics.disability.ipaMonto), money(metrics.expenses.total), `-${money(metrics.disability.ipaBrecha)}`, metrics.disability.ipaMonto >= metrics.expenses.total ? 'Alta' : 'Media', 'Cubierto parcialmente'],
-    ['Pensión de Viudedad (cónyuge computable, 52% B.R.)', money(metrics.survivorBenefits.viudedadMonto), money(metrics.expenses.total), `-${money(metrics.survivorBenefits.viudedadBrechaAislada)}`, metrics.survivorBenefits.viudedadMonto >= metrics.expenses.total ? 'Alta' : 'Baja', 'Requiere seguro de vida'],
-    ['Pensión de Orfandad (todos los hijos, 20% B.R. por hijo)', money(metrics.survivorBenefits.orfandadMonto), money(metrics.expenses.total), `-${money(Math.max(0, metrics.expenses.total - metrics.survivorBenefits.orfandadMonto))}`, metrics.survivorBenefits.orfandadMonto >= metrics.expenses.total ? 'Alta' : 'Media', 'Subsidio complementario de estudios'],
+    ...(isSingleAndChildless ? [] : [
+      ['Pensión de Viudedad (cónyuge computable, 52% B.R.)', money(metrics.survivorBenefits.viudedadMonto), money(metrics.expenses.total), `-${money(metrics.survivorBenefits.viudedadBrechaAislada)}`, metrics.survivorBenefits.viudedadMonto >= metrics.expenses.total ? 'Alta' : 'Baja', 'Requiere seguro de vida'],
+      ['Pensión de Orfandad (todos los hijos, 20% B.R. por hijo)', money(metrics.survivorBenefits.orfandadMonto), money(metrics.expenses.total), `-${money(Math.max(0, metrics.expenses.total - metrics.survivorBenefits.orfandadMonto))}`, metrics.survivorBenefits.orfandadMonto >= metrics.expenses.total ? 'Alta' : 'Media', 'Subsidio complementario de estudios']
+    ]),
     ['Pensión de Jubilación Ordinaria previsible (hasta 100% B.R.)', money(metrics.retirementGap.pensionEstimada), money(metrics.expenses.total), `-${money(metrics.retirementGap.brechaMensual)}`, metrics.retirementGap.pensionEstimada >= metrics.expenses.total ? 'Alta' : 'Media', 'Planificar ahorro indexado']
   ];
   drawTable(
@@ -1246,13 +1309,13 @@ async function generatePdf() {
   );
 
   // Add the native vector chart
-  const categories = ['Baja (60%)', 'Baja (75%)', 'Invalidez IPT', 'Invalidez IPA', 'Viudedad', 'Jubilación'];
+  const categories = ['Baja (60%)', 'Baja (75%)', 'Invalidez IPT', 'Invalidez IPA', ...(isSingleAndChildless ? [] : ['Viudedad']), 'Jubilación'];
   const values = [
     metrics.temporaryDisability.tramo60Monto,
     metrics.temporaryDisability.tramo75Monto,
     metrics.disability.iptMonto,
     metrics.disability.ipaMonto,
-    metrics.survivorBenefits.viudedadMonto,
+    ...(isSingleAndChildless ? [] : [metrics.survivorBenefits.viudedadMonto]),
     metrics.retirementGap.pensionEstimada
   ];
   drawVectorChart(
@@ -1393,7 +1456,9 @@ async function generatePdf() {
     },
     {
       title: '3. Protección Familiar (Decesos)',
-      text: `El capital objetivo recomendado de ${money(metrics.familyNeed.capitalFamiliarObjetivo)} se calcula sumando: amortización de deudas pendientes de ${money(metrics.familyNeed.detalles.deuda)}, gastos de transición inmediata de ${money(metrics.familyNeed.detalles.transicion)}, educación de tus ${formData.hijosMenores25 || 0} hijos de ${money(metrics.familyNeed.detalles.educacion)} (estimando 18.000 € por hijo para estudios superiores), y protección de rentas de ${money(metrics.familyNeed.detalles.rentaNecesaria)}. Al restar tu seguro de vida existente de ${money(formData.capitalSeguroVidaExistente || 0)}, resulta un déficit de protección de ${money(metrics.familyNeed.deficitDeProteccion)} que se sugiere cubrir.${formData.conyugeConIngresos === 'Si' ? ` Se han integrado los ingresos declarados del cónyuge (${money(formData.ingresosConyuge)}/mes) dentro del cómputo de la subsistencia conjunta, reduciendo la brecha mensual familiar.` : ''}`
+      text: childrenCount > 0 
+        ? `El capital objetivo recomendado de ${money(metrics.familyNeed.capitalFamiliarObjetivo)} se calcula sumando: amortización de deudas pendientes de ${money(metrics.familyNeed.detalles.deuda)}, gastos de transición inmediata de ${money(metrics.familyNeed.detalles.transicion)}, educación de tus ${childrenCount} hijos de ${money(metrics.familyNeed.detalles.educacion)} (estimando 18.000 € por hijo para estudios superiores), y protección de rentas de ${money(metrics.familyNeed.detalles.rentaNecesaria)}. Al restar tu seguro de vida existente de ${money(formData.capitalSeguroVidaExistente || 0)}, resulta un déficit de protección de ${money(metrics.familyNeed.deficitDeProteccion)} que se sugiere cubrir.${formData.conyugeConIngresos === 'Si' ? ` Se han integrado los ingresos declarados del cónyuge (${money(formData.ingresosConyuge)}/mes) dentro del cómputo de la subsistencia conjunta, reduciendo la brecha mensual familiar.` : ''}`
+        : `El capital objetivo recomendado de ${money(metrics.familyNeed.capitalFamiliarObjetivo)} se calcula sumando: amortización de deudas pendientes de ${money(metrics.familyNeed.detalles.deuda)}, gastos de transición inmediata de ${money(metrics.familyNeed.detalles.transicion)} y protección de rentas de ${money(metrics.familyNeed.detalles.rentaNecesaria)} (sin incluir gastos de educación al no declararse hijos menores de 25 años). Al restar tu seguro de vida existente de ${money(formData.capitalSeguroVidaExistente || 0)}, resulta un déficit de protección de ${money(metrics.familyNeed.deficitDeProteccion)} que se sugiere cubrir.`
     },
     {
       title: '4. Apalancamiento y Deuda',

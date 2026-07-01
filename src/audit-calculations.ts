@@ -197,7 +197,7 @@ export function calculatePermanentDisability(data: ClientData, totalExpenses: nu
 export function calculateSurvivorBenefits(data: ClientData, totalExpenses: number) {
   const base = Number(data.baseCotizacion || data.baseCotizacionActual || 2800);
   const married = data.estadoCivil === "Casado/a" || data.estadoCivil === "Pareja de Hecho";
-  const children = Number(data.hijosMenores25 || data.numeroHijos || 0);
+  const children = typeof data.hijosMenores25 === 'number' ? data.hijosMenores25 : (Number(data.numeroHijos) || 0);
 
   // Viudedad
   const viudedadMonto = married ? base * 0.52 : 0;
@@ -228,7 +228,8 @@ export function calculateSurvivorBenefits(data: ClientData, totalExpenses: numbe
 export function calculateFamilyProtectionNeed(data: ClientData, conjuntoBrechaOSuperavit: number) {
   const deudaPendienteTotal = Number(data.deudaPendienteTotal || 0) || Number(data.deudaInmobiliariaPendiente || 0);
   const gastosTransicion = 6000; // Gastos de sepelio, impuestos inmediatos, etc.
-  const capitalEducativoHijos = Number(data.hijosMenores25 || data.numeroHijos || 0) * 18000; // Estimar 18k por hijo para estudios superiores
+  const childrenCount = typeof data.hijosMenores25 === 'number' ? data.hijosMenores25 : (Number(data.numeroHijos) || 0);
+  const capitalEducativoHijos = childrenCount * 18000; // Estimar 18k por hijo para estudios superiores
   
   const deficitMensualFamiliar = conjuntoBrechaOSuperavit < 0 ? Math.abs(conjuntoBrechaOSuperavit) : 0;
   const mesesProteccion = 12 * 10; // Proteger 10 años fijos de rentas familiares
@@ -453,7 +454,8 @@ export function calculateSecurityScores(data: ClientData, metrics: any) {
   // Protección familiar
   const defProteccion = metrics.familyNeed.deficitDeProteccion;
   let familiaBase = 10;
-  if (Number(data.hijosMenores25 || data.numeroHijos || 0) > 0) {
+  const hasChildren = (typeof data.hijosMenores25 === 'number' ? data.hijosMenores25 : (Number(data.numeroHijos) || 0)) > 0;
+  if (hasChildren) {
     if (defProteccion > 150000) familiaBase = 2;
     else if (defProteccion > 50000) familiaBase = 5;
     else if (defProteccion > 0) familiaBase = 7;
@@ -589,7 +591,8 @@ export function validateReportConsistency(data: ClientData): Warning[] {
   }
 
   // 7. Familia conjunta
-  if (Number(data.numeroHijos || data.hijosMenores25 || 0) > 0 && (data.estadoCivil === "Casado/a" || data.estadoCivil === "Pareja de Hecho")) {
+  const hasChildrenWarn = (typeof data.hijosMenores25 === 'number' ? data.hijosMenores25 : (Number(data.numeroHijos) || 0)) > 0;
+  if (hasChildrenWarn && (data.estadoCivil === "Casado/a" || data.estadoCivil === "Pareja de Hecho")) {
     warnings.push({
       type: "informativa",
       text: "Análisis conjunto de viudedad y orfandad activado: la estimación del subsidio familiar suma ambas coberturas públicas bajo el límite del 100% de la base reguladora."

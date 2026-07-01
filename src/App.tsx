@@ -329,6 +329,10 @@ export default function App() {
       if (field === "baseCotizacionActual") next.baseCotizacion = Number(value);
       if (field === "ahorroSistematicoMensual") next.ahorroSistematico = Number(value);
       if (field === "rentabilidadAhorroSistematico") next.rentabilidadAhorro = Number(value);
+      if (field === "hijosMenores25") {
+        next.numeroHijos = Number(value);
+        next.hijosDependientes = Number(value);
+      }
       return next;
     });
   };
@@ -925,7 +929,15 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <NumberInput label="Hijos menores de 25" value={formData.hijosMenores25} onChange={v => updateField("hijosMenores25", v)} />
+                    <SelectInput 
+                      label="Hijos menores de 25" 
+                      value={formData.hijosMenores25 === 0 ? "No" : String(formData.hijosMenores25)} 
+                      options={["No", "1", "2", "3", "4", "5", "6"]} 
+                      onChange={v => {
+                        const num = v === "No" ? 0 : Number(v);
+                        updateField("hijosMenores25", num);
+                      }} 
+                    />
                     <Input label="Edades de Hijos" value={formData.edadHijos} onChange={v => updateField("edadHijos", v)} />
                   </div>
 
