@@ -226,9 +226,27 @@ export function calculateSurvivorBenefits(data: ClientData, totalExpenses: numbe
 
 // 8. Necesidad de Protección Familiar
 export function calculateFamilyProtectionNeed(data: ClientData, conjuntoBrechaOSuperavit: number) {
+  const childrenCount = typeof data.hijosMenores25 === 'number' ? data.hijosMenores25 : (Number(data.numeroHijos) || 0);
+  const isSingleOrNoPartner = ["Soltero/a", "Viudo/a", "Divorciado/a"].includes(data.estadoCivil);
+  const hasNoDependents = childrenCount === 0 && isSingleOrNoPartner;
+
+  if (hasNoDependents) {
+    return {
+      capitalFamiliarObjetivo: 0,
+      segurosExistentes: Number(data.capitalSeguroVidaExistente || 0),
+      deficitDeProteccion: 0,
+      hasNoDependents: true,
+      detalles: {
+        deuda: 0,
+        transicion: 0,
+        educacion: 0,
+        rentaNecesaria: 0
+      }
+    };
+  }
+
   const deudaPendienteTotal = Number(data.deudaPendienteTotal || 0) || Number(data.deudaInmobiliariaPendiente || 0);
   const gastosTransicion = 6000; // Gastos de sepelio, impuestos inmediatos, etc.
-  const childrenCount = typeof data.hijosMenores25 === 'number' ? data.hijosMenores25 : (Number(data.numeroHijos) || 0);
   const capitalEducativoHijos = childrenCount * 18000; // Estimar 18k por hijo para estudios superiores
   
   const deficitMensualFamiliar = conjuntoBrechaOSuperavit < 0 ? Math.abs(conjuntoBrechaOSuperavit) : 0;
@@ -242,6 +260,7 @@ export function calculateFamilyProtectionNeed(data: ClientData, conjuntoBrechaOS
     capitalFamiliarObjetivo,
     segurosExistentes,
     deficitDeProteccion,
+    hasNoDependents: false,
     detalles: {
       deuda: deudaPendienteTotal,
       transicion: gastosTransicion,
@@ -266,6 +285,8 @@ export interface RetirementScenario {
   capitalNecesario: number;
   fiabilidad: "Baja" | "Media" | "Alta";
   hipotesis: string;
+  rentasConsideradas: number;
+  otrosIngresos: number;
 }
 
 export function calculateRetirementScenarios(data: ClientData, totalExpenses: number): RetirementScenario[] {
@@ -302,9 +323,29 @@ export function calculateRetirementScenarios(data: ClientData, totalExpenses: nu
   const pensionOptimistaGross = (baseReguladora * 1.15) * Math.max(1.0, calculateRate(anosCotizadosProyectados + 2));
   const pensionOptimistaNet = Math.round(pensionOptimistaGross * 0.85);
 
-  // Para mantener el nivel de vida, el gasto de referencia se basa en mantener los ingresos netos ordinarios actuales (tasa de reemplazo) o cubrir gastos fijos holgadamente.
+  // El gasto de referencia excluye deudas que se habrán amortizado antes de jubilarse (hipoteca, préstamos, tarjetas)
+  // y se basa en una tasa de reemplazo idónea del 85% del salario neto para mantener el nivel de vida, o cubrir holgadamente gastos fijos remanentes.
+  const deudasAmortizables = Number(data.cuotaHipoteca || 0) + Number(data.cuotaPrestamos || 0) + Number(data.cuotaTarjetas || 0);
+  const coreExpenses = Math.max(0, totalExpenses - deudasAmortizables);
   const salarioNeto = Number(data.salarioNetoMensual || totalExpenses || 2400);
-  const gastoReferenciaCentral = Math.max(totalExpenses, salarioNeto);
+  const gastoReferenciaCentral = Math.max(coreExpenses, Math.round(salarioNeto * 0.85));
+
+  // Rentas inmobiliarias y otros ingresos considerados
+  const rentasNetasDisponibles = data.destinoRentasInmobiliarias !== "desconocido" ? Number(data.rentasInmobiliariasMensualesNetas || 0) : 0;
+  const rentasConsumibles = (data.destinoRentasInmobiliarias === "consumo" || data.destinoRentasInmobiliarias === "mixto")
+    ? rentasNetasDisponibles
+    : 0;
+  const otrosIngresos = Number(data.otrosIngresosNetos || 0);
+  const ingresosExtraJubilacion = rentasConsumibles + otrosIngresos;
+
+  const gastoConservador = Math.round(gastoReferenciaCentral * 1.1);
+  const brechaConservador = Math.max(0, gastoConservador - (pensionConservadorNet + ingresosExtraJubilacion));
+
+  const gastoCentral = gastoReferenciaCentral;
+  const brechaCentral = Math.max(0, gastoCentral - (pensionCentralNet + ingresosExtraJubilacion));
+
+  const gastoOptimista = Math.round(gastoReferenciaCentral * 1.2);
+  const brechaOptimista = Math.max(0, gastoOptimista - (pensionOptimistaNet + ingresosExtraJubilacion));
 
   return [
     {
@@ -316,11 +357,13 @@ export function calculateRetirementScenarios(data: ClientData, totalExpenses: nu
       anosCotizadosProyectados: anosCotizadosConservador,
       porcentajeEstimado: rateConservador * 100,
       pensionEstimada: pensionConservadorNet,
-      gastoReferencia: Math.round(gastoReferenciaCentral * 1.1),
-      brecha: Math.max(0, Math.round(gastoReferenciaCentral * 1.1) - pensionConservadorNet),
-      capitalNecesario: Math.max(0, Math.round(gastoReferenciaCentral * 1.1) - pensionConservadorNet) * 12 * 23,
+      gastoReferencia: gastoConservador,
+      brecha: brechaConservador,
+      capitalNecesario: brechaConservador * 12 * 23,
       fiabilidad: "Baja",
-      hipotesis: "Lagunas de cotización futuras, base de cotización reducida e impacto de la inflación acumulada del 10% en gastos."
+      hipotesis: "Lagunas de cotización futuras, base de cotización reducida e impacto de la inflación acumulada del 10% en gastos.",
+      rentasConsideradas: rentasConsumibles,
+      otrosIngresos
     },
     {
       name: "Central",
@@ -331,11 +374,13 @@ export function calculateRetirementScenarios(data: ClientData, totalExpenses: nu
       anosCotizadosProyectados,
       porcentajeEstimado: rateCentral * 100,
       pensionEstimada: pensionCentralNet,
-      gastoReferencia: gastoReferenciaCentral,
-      brecha: Math.max(0, gastoReferenciaCentral - pensionCentralNet),
-      capitalNecesario: Math.max(0, gastoReferenciaCentral - pensionCentralNet) * 12 * 23,
+      gastoReferencia: gastoCentral,
+      brecha: brechaCentral,
+      capitalNecesario: brechaCentral * 12 * 23,
       fiabilidad: "Media",
-      hipotesis: "Continuidad laboral manteniendo la base actual, con pensión neta estimada tras un 15% de IRPF medio."
+      hipotesis: "Continuidad laboral manteniendo la base actual, con pensión neta estimada tras un 15% de IRPF medio.",
+      rentasConsideradas: rentasConsumibles,
+      otrosIngresos
     },
     {
       name: "Optimista",
@@ -346,11 +391,13 @@ export function calculateRetirementScenarios(data: ClientData, totalExpenses: nu
       anosCotizadosProyectados: Math.max(37, anosCotizadosProyectados),
       porcentajeEstimado: Math.max(1.0, rateCentral) * 100,
       pensionEstimada: pensionOptimistaNet,
-      gastoReferencia: Math.round(gastoReferenciaCentral * 1.2), // Estilo de vida premium en retiro (viajes, ocio, etc.)
-      brecha: Math.max(0, Math.round(gastoReferenciaCentral * 1.2) - pensionOptimistaNet),
-      capitalNecesario: Math.max(0, Math.round(gastoReferenciaCentral * 1.2) - pensionOptimistaNet) * 12 * 23,
+      gastoReferencia: gastoOptimista,
+      brecha: brechaOptimista,
+      capitalNecesario: brechaOptimista * 12 * 23,
       fiabilidad: "Alta",
-      hipotesis: "Crecimiento profesional y base reguladora un 15% superior, proyectando un nivel de gastos premium (120%)."
+      hipotesis: "Crecimiento profesional y base reguladora un 15% superior, proyectando un nivel de gastos premium (120%).",
+      rentasConsideradas: rentasConsumibles,
+      otrosIngresos
     }
   ];
 }
@@ -362,8 +409,11 @@ export function calculateRetirementGap(
   rentasNetasDisponibles: number,
   totalExpenses: number
 ) {
+  // El gasto de referencia en jubilación excluye deudas que se habrán amortizado antes de jubilarse (hipoteca, préstamos, tarjetas)
+  const deudasAmortizables = Number(data.cuotaHipoteca || 0) + Number(data.cuotaPrestamos || 0) + Number(data.cuotaTarjetas || 0);
+  const coreExpenses = Math.max(0, totalExpenses - deudasAmortizables);
   const salarioNeto = Number(data.salarioNetoMensual || totalExpenses || 2400);
-  const gastoJubilacionReferencia = Math.max(totalExpenses, salarioNeto);
+  const gastoJubilacionReferencia = Math.max(coreExpenses, Math.round(salarioNeto * 0.85));
 
   // Si las rentas inmobiliarias se destinan a reinversión, no reducen la brecha de gasto de jubilación ya que se acumulan en el patrimonio general.
   const rentasConsumibles = (data.destinoRentasInmobiliarias === "consumo" || data.destinoRentasInmobiliarias === "mixto")
@@ -454,15 +504,23 @@ export function calculateSecurityScores(data: ClientData, metrics: any) {
   // Protección familiar
   const defProteccion = metrics.familyNeed.deficitDeProteccion;
   let familiaBase = 10;
-  const hasChildren = (typeof data.hijosMenores25 === 'number' ? data.hijosMenores25 : (Number(data.numeroHijos) || 0)) > 0;
-  if (hasChildren) {
-    if (defProteccion > 150000) familiaBase = 2;
-    else if (defProteccion > 50000) familiaBase = 5;
-    else if (defProteccion > 0) familiaBase = 7;
+  const isSingleOrNoPartner = ["Soltero/a", "Viudo/a", "Divorciado/a"].includes(data.estadoCivil);
+  const childrenCountScore = typeof data.hijosMenores25 === 'number' ? data.hijosMenores25 : (Number(data.numeroHijos) || 0);
+  const hasNoDependents = childrenCountScore === 0 && isSingleOrNoPartner;
+
+  if (hasNoDependents) {
+    familiaBase = 10;
   } else {
-    if (defProteccion > 50000) familiaBase = 6;
+    const hasChildren = childrenCountScore > 0;
+    if (hasChildren) {
+      if (defProteccion > 150000) familiaBase = 2;
+      else if (defProteccion > 50000) familiaBase = 5;
+      else if (defProteccion > 0) familiaBase = 7;
+    } else {
+      if (defProteccion > 50000) familiaBase = 6;
+    }
+    if (data.preguntas.p02 === "Si") familiaBase = Math.max(familiaBase, 8);
   }
-  if (data.preguntas.p02 === "Si") familiaBase = Math.max(familiaBase, 8);
   const familia = clampScore(familiaBase);
 
   // Deuda / Apalancamiento

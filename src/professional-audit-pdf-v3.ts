@@ -1335,16 +1335,36 @@ async function generatePdf() {
   // ==========================================
   newPage(doc, state, 'Protección Familiar y Retiro');
   heading(doc, state, '6. PROTECCIÓN FAMILIAR SUCESORIA Y DE VIDA');
-  paragraph(doc, state, 'Análisis de liquidez sucesoria en caso de fallecimiento para asegurar la cancelación de deudas, gastos de transición obligatorios y educación superior para herederos dependientes.');
-  sectionDivider(doc, state);
+  
+  if (metrics.familyNeed.hasNoDependents) {
+    paragraph(doc, state, 'Análisis de protección de vida sucesoria y familiar para dependientes directos.');
+    sectionDivider(doc, state);
+    
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(M, state.y, 182, 18, 1, 1, 'FD');
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...SLATE);
+    doc.text('NO PROCEDE RECOMENDACIÓN DE CAPITAL OBJETIVO', M + 4, state.y + 6);
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(...BLACK);
+    doc.text(`Al estar en estado civil ${formData.estadoCivil} y no tener hijos menores de 25 años a su cargo, no se establece`, M + 4, state.y + 11);
+    doc.text('necesidad de protección familiar de rentas o capital objetivo por decesos para dependientes.', M + 4, state.y + 15);
+    state.y += 24;
+  } else {
+    paragraph(doc, state, 'Análisis de liquidez sucesoria en caso de fallecimiento para asegurar la cancelación de deudas, gastos de transición obligatorios y educación superior para herederos dependientes.');
+    sectionDivider(doc, state);
 
-  const famRows = [
-    ['Deuda pendiente acumulada (amortización)', money(formData.deudaPendienteTotal), 'Impuestos y transición sucesoria', money(6000)],
-    ['Fondo educativo estimado para hijos', money(formData.hijosMenores25 * 18000), 'Déficit familiar acumulado (10 años)', money(Math.abs(metrics.survivorBenefits.conjuntoBrechaOSuperavit < 0 ? metrics.survivorBenefits.conjuntoBrechaOSuperavit : 0) * 12 * 10)],
-    ['CAPITAL OBJETIVO RECOMENDADO', money(metrics.familyNeed.capitalFamiliarObjetivo), 'Seguros de vida vigentes', money(formData.capitalSeguroVidaExistente)],
-    ['DÉFICIT NETO DE PROTECCIÓN', money(metrics.familyNeed.deficitDeProteccion), 'Diagnóstico de protección familiar', metrics.familyNeed.deficitDeProteccion > 0 ? "VULNERABLE" : "PROTEGIDO"]
-  ];
-  drawTable(doc, state, ['CONCEPTO DE LIQUIDEZ', 'VALOR', 'AJUSTE SUCESORIO', 'IMPORTE'], [50, 32, 60, 40], famRows, [], true);
+    const famRows = [
+      ['Deuda pendiente acumulada (amortización)', money(formData.deudaPendienteTotal), 'Impuestos y transición sucesoria', money(6000)],
+      ['Fondo educativo estimado para hijos', money(formData.hijosMenores25 * 18000), 'Déficit familiar acumulado (10 años)', money(Math.abs(metrics.survivorBenefits.conjuntoBrechaOSuperavit < 0 ? metrics.survivorBenefits.conjuntoBrechaOSuperavit : 0) * 12 * 10)],
+      ['CAPITAL OBJETIVO RECOMENDADO', money(metrics.familyNeed.capitalFamiliarObjetivo), 'Seguros de vida vigentes', money(formData.capitalSeguroVidaExistente)],
+      ['DÉFICIT NETO DE PROTECCIÓN', money(metrics.familyNeed.deficitDeProteccion), 'Diagnóstico de protección familiar', metrics.familyNeed.deficitDeProteccion > 0 ? "VULNERABLE" : "PROTEGIDO"]
+    ];
+    drawTable(doc, state, ['CONCEPTO DE LIQUIDEZ', 'VALOR', 'AJUSTE SUCESORIO', 'IMPORTE'], [50, 32, 60, 40], famRows, [], true);
+  }
 
   heading(doc, state, '7. PLANIFICACIÓN DE JUBILACIÓN (TRES ESCENARIOS)');
   paragraph(doc, state, 'Tres proyecciones matemáticas considerando la pensión de jubilación ordinaria estimada junto con el flujo pasivo de rentas inmobiliarias netas declaradas.');
@@ -1352,7 +1372,7 @@ async function generatePdf() {
   const scenRows = (retirementScenarios || []).map((s: any) => [
     s.name,
     money(s.pensionEstimada),
-    money(formData.rentasInmobiliariasMensualesNetas),
+    money(s.rentasConsideradas || 0),
     money(s.gastoReferencia),
     `-${money(s.brecha)}`,
     money(s.capitalNecesario),
@@ -1361,24 +1381,24 @@ async function generatePdf() {
   drawTable(
     doc,
     state,
-    ['ESCENARIO', 'PENSIÓN S.S.', 'RENTAS INMOB.', 'GASTO DE REFERENCIA', 'BRECHA MENSUAL', 'CAPITAL NECESARIO', 'AHORRO RECOM.'],
-    [20, 24, 24, 30, 26, 33, 25],
-    scenRows,
+    ['ESCENARIO', 'RENTAS INMOB. CONS.', 'PENSIÓN S.S.', 'GASTO DE REFERENCIA', 'BRECHA MENSUAL', 'CAPITAL NECESARIO', 'AHORRO RECOM.'],
+    [20, 26, 24, 28, 26, 33, 25],
+    scenRows.map(r => [r[0], r[2], r[1], r[3], r[4], r[5], r[6]]), // swap columns so it matches the headers (s.name, s.rentasConsideradas, s.pensionEstimada...)
     ['left', 'right', 'right', 'right', 'right', 'right', 'right']
   );
 
   // AddStacked chart for retirement scenarios
   const scens = [
-    { name: 'Conservador', pension: retirementScenarios?.[0]?.pensionEstimada || 0, rents: Number(formData.rentasInmobiliariasMensualesNetas || 0) },
-    { name: 'Central', pension: retirementScenarios?.[1]?.pensionEstimada || 0, rents: Number(formData.rentasInmobiliariasMensualesNetas || 0) },
-    { name: 'Optimista', pension: retirementScenarios?.[2]?.pensionEstimada || 0, rents: Number(formData.rentasInmobiliariasMensualesNetas || 0) }
+    { name: 'Conservador', pension: retirementScenarios?.[0]?.pensionEstimada || 0, rents: Number(retirementScenarios?.[0]?.rentasConsideradas || 0) },
+    { name: 'Central', pension: retirementScenarios?.[1]?.pensionEstimada || 0, rents: Number(retirementScenarios?.[1]?.rentasConsideradas || 0) },
+    { name: 'Optimista', pension: retirementScenarios?.[2]?.pensionEstimada || 0, rents: Number(retirementScenarios?.[2]?.rentasConsideradas || 0) }
   ];
   drawRetirementChart(
     doc,
     state,
     'ESTUDIO COMPARATIVO DE INGRESOS MENSUALES POR PENSIÓN DE LA S.S. VS GASTO DE REFERENCIA',
     scens,
-    metrics.expenses.total
+    retirementScenarios?.[1]?.gastoReferencia || metrics.retirementGap.gastoReferencia
   );
 
   // ==========================================
@@ -1456,9 +1476,11 @@ async function generatePdf() {
     },
     {
       title: '3. Protección Familiar (Decesos)',
-      text: childrenCount > 0 
-        ? `El capital objetivo recomendado de ${money(metrics.familyNeed.capitalFamiliarObjetivo)} se calcula sumando: amortización de deudas pendientes de ${money(metrics.familyNeed.detalles.deuda)}, gastos de transición inmediata de ${money(metrics.familyNeed.detalles.transicion)}, educación de tus ${childrenCount} hijos de ${money(metrics.familyNeed.detalles.educacion)} (estimando 18.000 € por hijo para estudios superiores), y protección de rentas de ${money(metrics.familyNeed.detalles.rentaNecesaria)}. Al restar tu seguro de vida existente de ${money(formData.capitalSeguroVidaExistente || 0)}, resulta un déficit de protección de ${money(metrics.familyNeed.deficitDeProteccion)} que se sugiere cubrir.${formData.conyugeConIngresos === 'Si' ? ` Se han integrado los ingresos declarados del cónyuge (${money(formData.ingresosConyuge)}/mes) dentro del cómputo de la subsistencia conjunta, reduciendo la brecha mensual familiar.` : ''}`
-        : `El capital objetivo recomendado de ${money(metrics.familyNeed.capitalFamiliarObjetivo)} se calcula sumando: amortización de deudas pendientes de ${money(metrics.familyNeed.detalles.deuda)}, gastos de transición inmediata de ${money(metrics.familyNeed.detalles.transicion)} y protección de rentas de ${money(metrics.familyNeed.detalles.rentaNecesaria)} (sin incluir gastos de educación al no declararse hijos menores de 25 años). Al restar tu seguro de vida existente de ${money(formData.capitalSeguroVidaExistente || 0)}, resulta un déficit de protección de ${money(metrics.familyNeed.deficitDeProteccion)} que se sugiere cubrir.`
+      text: metrics.familyNeed.hasNoDependents
+        ? `Al encontrarse en estado civil ${formData.estadoCivil} y sin hijos menores de 25 años a su cargo, no existe una necesidad financiera de cobertura de decesos o seguro de vida para protección familiar de dependientes. Se recomienda centrarse en otros pilares como la jubilación y la optimización de liquidez, no requiriéndose la recomendación de ningún capital familiar objetivo por decesos.`
+        : childrenCount > 0 
+          ? `El capital objetivo recomendado de ${money(metrics.familyNeed.capitalFamiliarObjetivo)} se calcula sumando: amortización de deudas pendientes de ${money(metrics.familyNeed.detalles.deuda)}, gastos de transición inmediata de ${money(metrics.familyNeed.detalles.transicion)}, educación de tus ${childrenCount} hijos de ${money(metrics.familyNeed.detalles.educacion)} (estimando 18.000 € por hijo para estudios superiores), y protección de rentas de ${money(metrics.familyNeed.detalles.rentaNecesaria)}. Al restar tu seguro de vida existente de ${money(formData.capitalSeguroVidaExistente || 0)}, resulta un déficit de protección de ${money(metrics.familyNeed.deficitDeProteccion)} que se sugiere cubrir.${formData.conyugeConIngresos === 'Si' ? ` Se han integrado los ingresos declarados del cónyuge (${money(formData.ingresosConyuge)}/mes) dentro del cómputo de la subsistencia conjunta, reduciendo la brecha mensual familiar.` : ''}`
+          : `El capital objetivo recomendado de ${money(metrics.familyNeed.capitalFamiliarObjetivo)} se calcula sumando: amortización de deudas pendientes de ${money(metrics.familyNeed.detalles.deuda)}, gastos de transición inmediata de ${money(metrics.familyNeed.detalles.transicion)} y protección de rentas de ${money(metrics.familyNeed.detalles.rentaNecesaria)} (sin incluir gastos de educación al no declararse hijos menores de 25 años). Al restar tu seguro de vida existente de ${money(formData.capitalSeguroVidaExistente || 0)}, resulta un déficit de protección de ${money(metrics.familyNeed.deficitDeProteccion)} que se sugiere cubrir.`
     },
     {
       title: '4. Apalancamiento y Deuda',
@@ -1569,7 +1591,9 @@ async function generatePdf() {
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(7.2);
   doc.setTextColor(...BLACK);
-  const p2 = `El blindaje familiar frente a fallecimiento o invalidez requiere garantizar la estabilidad financiera de tus dependientes. El capital objetivo idóneo estimado asciende a ${money(metrics.familyNeed.capitalFamiliarObjetivo)}, desglosado en: amortización de tus deudas (${money(metrics.familyNeed.detalles.deuda)}), gastos de transición y sepelio (${money(metrics.familyNeed.detalles.transicion)}), fondos previstos para estudios de tus hijos (${money(metrics.familyNeed.detalles.educacion)}), y una renta familiar de transición de ${money(metrics.familyNeed.detalles.rentaNecesaria)} (equivalente a 10 años de brecha de vida). Tras restar el capital de vida que tienes contratado actualmente (${money(formData.capitalSeguroVidaExistente)}), resulta un déficit neto de protección familiar de ${money(metrics.familyNeed.deficitDeProteccion)}. Es prioritario incrementar tus seguros de vida vigentes para neutralizar este riesgo estructural.`;
+  const p2 = metrics.familyNeed.hasNoDependents
+    ? `Al encontrarse en estado civil ${formData.estadoCivil} y sin hijos menores de 25 años a su cargo, no se establece necesidad de protección familiar de rentas o capital de vida para herederos dependientes. No procede la recomendación de un capital objetivo de vida familiar en este escenario.`
+    : `El blindaje familiar frente a fallecimiento o invalidez requiere garantizar la estabilidad financiera de tus dependientes. El capital objetivo idóneo estimado asciende a ${money(metrics.familyNeed.capitalFamiliarObjetivo)}, desglosado en: amortización de tus deudas (${money(metrics.familyNeed.detalles.deuda)}), gastos de transición y sepelio (${money(metrics.familyNeed.detalles.transicion)}), fondos previstos para estudios de tus hijos (${money(metrics.familyNeed.detalles.educacion)}), y una renta familiar de transición de ${money(metrics.familyNeed.detalles.rentaNecesaria)} (equivalente a 10 años de brecha de vida). Tras restar el capital de vida que tienes contratado actualmente (${money(formData.capitalSeguroVidaExistente)}), resulta un déficit neto de protección familiar de ${money(metrics.familyNeed.deficitDeProteccion)}. Es prioritario incrementar tus seguros de vida vigentes para neutralizar este riesgo estructural.`;
   const p2Lines = doc.splitTextToSize(p2, W);
   doc.text(p2Lines, M, state.y);
   state.y += p2Lines.length * 3.8 + 12;

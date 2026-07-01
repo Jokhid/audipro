@@ -619,7 +619,9 @@ export default function App() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-bold text-slate-900 text-sm uppercase text-[#C5A566]">2. Protección Familiar (Decesos)</h3>
-                    <p className="text-xs text-slate-500">Escenario conjunto de viudedad y orfandad</p>
+                    <p className="text-xs text-slate-500">
+                      {familyNeed.hasNoDependents ? "No aplica (sin cargas familiares)" : "Escenario conjunto de viudedad y orfandad"}
+                    </p>
                   </div>
                   <span className={`px-2.5 py-1 text-xs font-black rounded-full ${
                     scores.familia >= 8 ? "bg-emerald-50 text-emerald-700" : scores.familia >= 5 ? "bg-yellow-300 text-black font-semibold shadow-sm" : "bg-red-50 text-red-700"
@@ -629,38 +631,50 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded">
                   <div>
                     <span className="text-slate-400 block font-medium">Pensión Familiar Conjunta</span>
-                    <strong className="text-slate-800">{formatCurrency(survivorBenefits.conjuntoMonto)} / mes</strong>
+                    <strong className="text-slate-800">
+                      {familyNeed.hasNoDependents ? "No aplica" : `${formatCurrency(survivorBenefits.conjuntoMonto)} / mes`}
+                    </strong>
                   </div>
                   <div>
                     <span className="text-slate-400 block font-medium">Déficit de Protección</span>
                     <strong className={familyNeed.deficitDeProteccion > 0 ? "text-red-600" : "text-emerald-600"}>
-                      {formatCurrency(familyNeed.deficitDeProteccion)} objetivo
+                      {familyNeed.hasNoDependents ? "No aplica" : `${formatCurrency(familyNeed.deficitDeProteccion)} objetivo`}
                     </strong>
                   </div>
                 </div>
                 <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                  <strong>Recomendación:</strong> {survivorBenefits.conjuntoBrechaOSuperavit >= 0 
-                    ? "Subsidio mensual cubierto por escenario familiar conjunto. Ajustar seguros para cubrir deudas." 
-                    : `Existe un déficit familiar. Se recomienda capital de vida de ${formatCurrency(familyNeed.deficitDeProteccion)}.`}
+                  <strong>Recomendación:</strong> {familyNeed.hasNoDependents 
+                    ? "No se requiere cobertura de protección familiar al no declarar cónyuge ni hijos dependientes menores de 25 años."
+                    : survivorBenefits.conjuntoBrechaOSuperavit >= 0 
+                      ? "Subsidio mensual cubierto por escenario familiar conjunto. Ajustar seguros para cubrir deudas." 
+                      : `Existe un déficit familiar. Se recomienda capital de vida de ${formatCurrency(familyNeed.deficitDeProteccion)}.`}
                 </p>
                 <div className="mt-1.5 text-[11px] text-slate-800 bg-yellow-100/60 p-2.5 border-l-2 border-yellow-500 rounded-r leading-relaxed">
-                  <strong>¿Cómo se calcula y por qué se sugiere?</strong> El capital objetivo recomendado de <strong>{formatCurrency(familyNeed.capitalFamiliarObjetivo)}</strong> se calcula sumando:
-                  <span className="block mt-1 pl-2 border-l border-slate-200">
-                    • Amortización de deudas pendientes: <strong>{formatCurrency(familyNeed.detalles.deuda)}</strong> (para que tu familia no herede deudas).<br />
-                    • Gastos de transición inmediata y sepelio: <strong>{formatCurrency(familyNeed.detalles.transicion)}</strong>.<br />
-                    • Educación de tus <strong>{formData.hijosMenores25}</strong> hijos menores: <strong>{formatCurrency(familyNeed.detalles.educacion)}</strong> (estimando {formatCurrency(18000)} por hijo para estudios superiores).<br />
-                    • Protección de rentas familiares: <strong>{formatCurrency(familyNeed.detalles.rentaNecesaria)}</strong> (cubre la brecha mensual de vida multiplicada por 120 meses / 10 años).
-                  </span>
-                  Al restar tu seguro de vida existente de <strong>{formatCurrency(formData.capitalSeguroVidaExistente)}</strong>, resulta un déficit de protección de <strong>{formatCurrency(familyNeed.deficitDeProteccion)}</strong> que sugerimos cubrir.
-                  {formData.conyugeConIngresos === "Si" && (
-                    <div className="mt-1.5 pt-1 border-t border-yellow-200/50 text-[10px] text-emerald-800 font-bold">
-                      Nota: Se han integrado los ingresos declarados del cónyuge ({formatCurrency(formData.ingresosConyuge)}/mes) dentro de la subsistencia conjunta, reduciendo la brecha mensual y el déficit de protección familiar.
-                    </div>
+                  {familyNeed.hasNoDependents ? (
+                    <span>
+                      <strong>Información:</strong> No se calcula ni recomienda ningún capital objetivo de protección familiar de decesos al estar en estado civil <strong>{formData.estadoCivil}</strong> y declarar <strong>{formData.hijosMenores25}</strong> hijos menores de 25 años a su cargo.
+                    </span>
+                  ) : (
+                    <>
+                      <strong>¿Cómo se calcula y por qué se sugiere?</strong> El capital objetivo recomendado de <strong>{formatCurrency(familyNeed.capitalFamiliarObjetivo)}</strong> se calcula sumando:
+                      <span className="block mt-1 pl-2 border-l border-slate-200">
+                        • Amortización de deudas pendientes: <strong>{formatCurrency(familyNeed.detalles.deuda)}</strong> (para que tu familia no herede deudas).<br />
+                        • Gastos de transición inmediata y sepelio: <strong>{formatCurrency(familyNeed.detalles.transicion)}</strong>.<br />
+                        • Educación de tus <strong>{formData.hijosMenores25}</strong> hijos menores: <strong>{formatCurrency(familyNeed.detalles.educacion)}</strong> (estimando {formatCurrency(18000)} por hijo para estudios superiores).<br />
+                        • Protección de rentas familiares: <strong>{formatCurrency(familyNeed.detalles.rentaNecesaria)}</strong> (cubre la brecha mensual de vida multiplicada por 120 meses / 10 años).
+                      </span>
+                      Al restar tu seguro de vida existente de <strong>{formatCurrency(formData.capitalSeguroVidaExistente)}</strong>, resulta un déficit de protección de <strong>{formatCurrency(familyNeed.deficitDeProteccion)}</strong> que sugerimos cubrir.
+                      {formData.conyugeConIngresos === "Si" && (
+                        <div className="mt-1.5 pt-1 border-t border-yellow-200/50 text-[10px] text-emerald-800 font-bold">
+                          Nota: Se han integrado los ingresos declarados del cónyuge ({formatCurrency(formData.ingresosConyuge)}/mes) dentro de la subsistencia conjunta, reduciendo la brecha mensual y el déficit de protección familiar.
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
                 <div className="flex justify-between items-center text-[10px] text-slate-400 pt-2 border-t border-slate-100">
-                  <span>Prioridad: <strong className="text-[#F97316] font-bold uppercase">Media-Alta</strong></span>
-                  <span>Análisis: Viudedad + Orfandad (Tope 100%)</span>
+                  <span>Prioridad: <strong className="text-emerald-600 font-bold uppercase">{familyNeed.hasNoDependents ? "Baja / No aplica" : "Media-Alta"}</strong></span>
+                  <span>Análisis: {familyNeed.hasNoDependents ? "Sin dependientes familiares" : "Viudedad + Orfandad (Tope 100%)"}</span>
                 </div>
               </div>
 
