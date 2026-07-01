@@ -881,7 +881,7 @@ async function generatePdf() {
     { num: '1', name: 'Resumen Ejecutivo y Calificación Global', page: '3' },
     { num: '2', name: 'Fotografía Financiera Actual y Presupuesto', page: '4' },
     { num: '3', name: 'Objetivos y Proyectos de Capitalización', page: '4' },
-    { num: '4', name: 'Auditoría de Previsión Social (Seguridad Social)', page: '5' },
+    { num: '4', name: 'Auditoría de Previsión Social', page: '5' },
     { num: '5', name: 'Comparativa Gráfica de Prestaciones vs Gastos', page: '5' },
     { num: '6', name: 'Fallecimiento y Protección Familiar Sucesoria', page: '6' },
     { num: '7', name: 'Planificación de Jubilación en Tres Escenarios', page: '6' },
@@ -1220,7 +1220,7 @@ async function generatePdf() {
   // PAGE 5: AUDITORÍA DE PREVISIÓN SOCIAL (Fase 13.7 & 13.8)
   // ==========================================
   newPage(doc, state, 'Auditoría de Previsión Social');
-  heading(doc, state, '4. AUDITORÍA DE PREVISIÓN SOCIAL (SEGURIDAD SOCIAL)');
+  heading(doc, state, '4. AUDITORÍA DE PREVISIÓN SOCIAL');
   paragraph(doc, state, 'Las prestaciones públicas de la Seguridad Social española estimadas para cada contingencia del trabajador, comparadas frente al nivel fáctico de gastos familiares declarados.');
   sectionDivider(doc, state);
 
@@ -1265,12 +1265,7 @@ async function generatePdf() {
     'Gastos fijos'
   );
 
-  heading(doc, state, 'Cálculo Didáctico de la Base Reguladora (B.R.)', 9);
-  paragraph(doc, state, 'La Base Reguladora es el eje técnico que determina la cuantía final de cada subsidio o pensión pública en España. Su cálculo se realiza de forma diferenciada según la contingencia:');
-  paragraph(doc, state, '• Incapacidad Temporal (Baja Laboral): Se calcula con la base de cotización de contingencias comunes o profesionales del mes previo al hecho causante. Para enfermedad común, se divide entre 30 (salario mensual). Para contingencias profesionales, se descuentan las horas extraordinarias y se prorratean las cotizadas en el año anterior.');
-  paragraph(doc, state, '• Incapacidad Permanente (Invalidez): En contingencia común, resulta del promedio ponderado por el IPC de las bases de cotización de los últimos años (de 8 a 24 años, según edad y cotización). En accidentes laborales, se calcula según los salarios reales del año anterior mediante el cociente de dividir el sueldo y los pluses anuales correspondientes.');
-  paragraph(doc, state, '• Pensión de Viudedad: Se determina a partir de la Base Reguladora de la persona fallecida. Si el fallecido era trabajador activo por contingencia común, se calcula dividiendo entre 28 la suma de las bases de cotización de un período de 24 meses ininterrumpidos elegido dentro de los 15 años previos.');
-  paragraph(doc, state, '• Pensión de Jubilación: Se computa dividiendo entre 350 la suma de las bases de cotización de los últimos 25 años (300 bases mensuales) anteriores a la fecha de jubilación. Las bases más antiguas se actualizan por inflación (excepto los 2 últimos años). Al resultado obtenido se le aplica un porcentaje corrector según los años cotizados totales (escalado del 50% al 100%).');
+
 
   // ==========================================
   // PAGE 6: PROTECCIÓN FAMILIAR Y RETIRO
