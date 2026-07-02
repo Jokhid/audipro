@@ -263,9 +263,21 @@ export default function App() {
       }
     } catch (err: any) {
       console.error("Login to Gmail failed", err);
+      let errMsg = "No se pudo conectar con Gmail. Por favor, inténtelo de nuevo.";
+      
+      if (err.code === "auth/unauthorized-domain") {
+        errMsg = `Dominio no autorizado: El dominio de Vercel (${window.location.hostname}) no está autorizado en tu proyecto de Firebase. Debes añadirlo en Firebase Console -> Authentication -> Settings -> Authorized Domains.`;
+      } else if (err.code === "auth/popup-closed-by-user") {
+        errMsg = "La ventana de inicio de sesión se cerró antes de completar el proceso. Inténtalo de nuevo.";
+      } else if (err.code === "auth/popup-blocked") {
+        errMsg = "El navegador bloqueó la ventana emergente de inicio de sesión. Por favor, permite las ventanas emergentes para este sitio.";
+      } else if (err.message) {
+        errMsg = `Error de autenticación: ${err.message} (${err.code || 'unknown'})`;
+      }
+      
       setEmailStatus({
         type: "error",
-        message: "No se pudo conectar con Gmail. Por favor, inténtelo de nuevo."
+        message: errMsg
       });
     }
   };
