@@ -1,0 +1,120 @@
+import { initializeApp } from "firebase/app";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from "firebase/auth";
+import firebaseConfig from "../firebase-applet-config.json";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+const provider = new GoogleAuthProvider();
+provider.addScope("https://www.googleapis.com/auth/gmail.send");
+
+let isSigningIn = false;
+let cachedAccessToken: string | null = null;
+
+export const initAuth = (
+  onAuthSuccess?: (user: User, token: string) => void,
+  onAuthFailure?: () => void
+) => {
+  return onAuthStateChanged(auth, async (user: User | null) => {
+    if (user) {
+      if (cachedAccessToken) {
+        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
+      } else if (!isSigningIn) {
+        cachedAccessToken = null;
+        if (onAuthFailure) onAuthFailure();
+      }
+    } else {
+      cachedAccessToken = null;
+      if (onAuthFailure) onAuthFailure();
+    }
+  });
+};
+
+export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+  try {
+    isSigningIn = true;
+    const result = await signInWithPopup(auth, provider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (!credential?.accessToken) {
+      throw new Error("Failed to get access token from Firebase Auth");
+    }
+
+    cachedAccessToken = credential.accessToken;
+    return { user: result.user, accessToken: cachedAccessToken };
+  } catch (error: any) {
+    console.error("Sign in error:", error);
+    throw error;
+  } finally {
+    isSigningIn = false;
+  }
+};
+
+export const getAccessToken = async (): Promise<string | null> => {
+  return cachedAccessToken;
+};
+
+export const logout = async () => {
+  await auth.signOut();
+  cachedAccessToken = null;
+};
+
+export const sendEmailWithPdf = async (
+  accessToken: string,
+  recipient: string,
+  clientName: string,
+  base64Pdf: string
+) => {
+  const boundary = "boundary_audit_pdf";
+  const subject = "Auditoría de riesgos financieros y patrimoniales";
+  const encodedSubject = `=?utf-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
+
+  const bodyText = `A continuación te adjunto tu auditoría. Quedo a tu disposición para cualquier duda o solventar los riesgos detectados.\n\nUn cordial saludo.`;
+
+  const mailParts = [
+    `To: ${recipient}`,
+    `Subject: ${encodedSubject}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    "",
+    `--${boundary}`,
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    bodyText,
+    "",
+    `--${boundary}`,
+    `Content-Type: application/pdf; name="auditoria_patrimonial_${clientName.replace(/\s+/g, '_')}.pdf"`,
+    "Content-Transfer-Encoding: base64",
+    `Content-Disposition: attachment; filename="auditoria_patrimonial_${clientName.replace(/\s+/g, '_')}.pdf"`,
+    "",
+    base64Pdf,
+    "",
+    `--${boundary}--`
+  ];
+
+  const rawMime = mailParts.join("\r\n");
+  
+  // Safe base64url encoding
+  const base64SafeString = btoa(unescape(encodeURIComponent(rawMime)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      raw: base64SafeString
+    })
+  });
+
+  if (!response.ok) {
+    const errData = await response.json();
+    throw new Error(errData.error?.message || "Failed to send email");
+  }
+
+  return await response.json();
+};

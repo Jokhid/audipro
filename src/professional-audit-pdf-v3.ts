@@ -780,7 +780,7 @@ function drawCoverLogo(doc: jsPDF, x: number, y: number) {
 // -------------------------------------------------------------
 // MAIN GENERATOR
 // -------------------------------------------------------------
-async function generatePdf() {
+async function generatePdf(save = true) {
   const dataContainer = (window as any).currentAuditData;
   if (!dataContainer) {
     throw new Error('No se encontró el modelo de datos de la auditoría. Recarga y vuelve a intentarlo.');
@@ -903,14 +903,37 @@ async function generatePdf() {
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(215, 220, 225);
+    
+    // The name is bold and size 8.2, so let's get its width with its original font/size
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8.2);
     const nameWidth = doc.getTextWidth(`${item.num}. ${item.name.toUpperCase()}`);
-    const dotsX = M + nameWidth + 2;
-    const dotsW = W - nameWidth - 12;
+    
+    // Switch to normal size 8 for dots calculation
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(8);
+    const dotWidth = doc.getTextWidth('.');
+    const spaceWidth = doc.getTextWidth(' ');
+    
+    // Switch to bold size 8.2 for page number width calculation
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8.2);
+    const pageNumWidth = doc.getTextWidth(item.page);
+    
+    // Switch back to normal size 8 for dots
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(8);
+    
+    const startX = M + nameWidth + spaceWidth;
+    const endX = M + W - pageNumWidth - (2 * spaceWidth);
+    const dotsWidth = endX - startX;
+    
     let dotsStr = '';
-    for (let j = 0; j < Math.floor(dotsW / 1.5); j++) {
-      dotsStr += '.';
+    if (dotsWidth > 0) {
+      const numDots = Math.floor(dotsWidth / dotWidth);
+      dotsStr = '.'.repeat(numDots);
     }
-    doc.text(dotsStr, dotsX, indexY);
+    doc.text(dotsStr, startX, indexY);
 
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(8.2);
@@ -1028,10 +1051,18 @@ async function generatePdf() {
   doc.setTextColor(...SLATE);
   doc.text('RECOMENDACIÓN GENERAL PROFESIONAL:', M + 69, scoreY + 5.5);
   doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(7.2);
+  doc.setFontSize(6.5);
   doc.setTextColor(...MUTED);
-  const recTxt = `Para fortalecer el blindaje financiero (${scores.globalScore}/10) de ${clientName}, se recomienda prioritariamente: 1º) ${lowestThree[0].name}: ${lowestThree[0].action.replace(/\.$/, '')}. 2º) ${lowestThree[1].name}: ${lowestThree[1].action.replace(/\.$/, '')}. 3º) ${lowestThree[2].name}: ${lowestThree[2].action.replace(/\.$/, '')}.`;
-  doc.text(doc.splitTextToSize(recTxt, 110), M + 69, scoreY + 10);
+
+  const formatCatName = (name: string) => {
+    if (name === 'Protección Fam.') return 'protección familiar';
+    if (name === 'Orden Legal') return 'orden legal';
+    if (name === 'Baja Laboral') return 'baja laboral';
+    return name.toLowerCase();
+  };
+
+  const recTxt = `Tras analizar exhaustivamente el patrimonio de ${clientName}, se aconseja priorizar de manera inmediata la subsanación de las brechas en ${formatCatName(lowestThree[0].name)}, ${formatCatName(lowestThree[1].name)} y ${formatCatName(lowestThree[2].name)}. Corregir con carácter de urgencia estas deficiencias consolidará un blindaje familiar óptimo, optimizará la rentabilidad de sus recursos y garantizará su total tranquilidad financiera futura.`;
+  doc.text(doc.splitTextToSize(recTxt, 110), M + 69, scoreY + 9.2);
   state.y += 24;
 
   // 3 Risks & 3 Priorities
@@ -1050,7 +1081,7 @@ async function generatePdf() {
   doc.setFontSize(6.8);
   doc.setTextColor(...BLACK);
   lowestThree.forEach((item, idx) => {
-    const riskText = `${idx + 1}. [${item.name}] ${item.risk}`;
+    const riskText = `${idx + 1}. ${item.risk}`;
     const riskLines = doc.splitTextToSize(riskText, 80);
     doc.text(riskLines[0] || '', M + 4, infoY + 11 + idx * 5);
   });
@@ -1067,7 +1098,7 @@ async function generatePdf() {
   doc.setFontSize(6.8);
   doc.setTextColor(...BLACK);
   lowestThree.forEach((item, idx) => {
-    const actionText = `${idx + 1}. [${item.name}] ${item.action}`;
+    const actionText = `${idx + 1}. ${item.action}`;
     const actionLines = doc.splitTextToSize(actionText, 80);
     doc.text(actionLines[0] || '', M + 98, infoY + 11 + idx * 5);
   });
@@ -1401,18 +1432,18 @@ async function generatePdf() {
   ensureSpace(doc, state, boxHeight + 10);
   const boxY = state.y;
   
-  doc.setFillColor(254, 253, 240); // Soft amber light bg
-  doc.setDrawColor(245, 158, 11);    // Soft amber border
+  doc.setFillColor(...GOLD); // Gold background
+  doc.setDrawColor(...GOLD); // Gold border
   doc.roundedRect(M, boxY, W, boxHeight, 1.5, 1.5, 'FD');
   
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(7.5);
-  doc.setTextColor(180, 83, 9); // Dark amber text
+  doc.setTextColor(255, 255, 255); // White text
   doc.text(infoTitle, M + 5, boxY + 6.0);
   
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(6.8);
-  doc.setTextColor(...BLACK);
+  doc.setTextColor(255, 255, 255); // White text
   
   let lineY = boxY + 11.0;
   for (let i = 0; i < infoLines.length; i++) {
@@ -1739,8 +1770,13 @@ async function generatePdf() {
   state.y += contactCardH + 8;
 
   footer(doc, state.page);
-  doc.save(`informe-auditoria-profesional-${slug(clientName)}.pdf`);
+  if (save) {
+    doc.save(`informe-auditoria-profesional-${slug(clientName)}.pdf`);
+  }
+  return doc;
 }
+
+(window as any).generatePdf = generatePdf;
 
 function buttonBusy(button: HTMLButtonElement, busy: boolean) {
   if (busy) {

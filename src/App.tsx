@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useMemo, useState, createContext, useContext } from "react";
+import { initAuth, googleSignIn, logout, sendEmailWithPdf } from "./gmail-auth";
 import { 
   AlertTriangle, 
   BarChart3, 
@@ -226,6 +227,95 @@ export default function App() {
   const [formData, setFormData] = useState<ClientData>(initialClientData);
   const [verifiedZeros, setVerifiedZeros] = useState<Record<string, boolean>>({});
   
+  const [gmailUser, setGmailUser] = useState<any>(null);
+  const [gmailToken, setGmailToken] = useState<string | null>(null);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isEmailSending, setIsEmailSending] = useState(false);
+  const [emailStatus, setEmailStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [recipientEmail, setRecipientEmail] = useState("");
+
+  useEffect(() => {
+    const unsubscribe = initAuth(
+      (user, token) => {
+        setGmailUser(user);
+        setGmailToken(token);
+      },
+      () => {
+        setGmailUser(null);
+        setGmailToken(null);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
+  const handleSendEmailClick = () => {
+    setRecipientEmail(formData.email || "");
+    setEmailStatus(null);
+    setIsEmailModalOpen(true);
+  };
+
+  const handleGmailLogin = async () => {
+    try {
+      const result = await googleSignIn();
+      if (result) {
+        setGmailUser(result.user);
+        setGmailToken(result.accessToken);
+      }
+    } catch (err: any) {
+      console.error("Login to Gmail failed", err);
+      setEmailStatus({
+        type: "error",
+        message: "No se pudo conectar con Gmail. Por favor, inténtelo de nuevo."
+      });
+    }
+  };
+
+  const handleSendEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!gmailToken) return;
+    if (!recipientEmail) {
+      setEmailStatus({
+        type: "error",
+        message: "Por favor, introduzca una dirección de correo válida."
+      });
+      return;
+    }
+
+    setIsEmailSending(true);
+    setEmailStatus(null);
+
+    try {
+      const generatePdfFn = (window as any).generatePdf;
+      if (!generatePdfFn) {
+        throw new Error("El generador de PDF no está inicializado. Recarga e inténtalo de nuevo.");
+      }
+      
+      const doc = await generatePdfFn(false);
+      const base64Pdf = doc.output("base64");
+
+      await sendEmailWithPdf(gmailToken, recipientEmail, formData.nombre || "Cliente", base64Pdf);
+
+      setEmailStatus({
+        type: "success",
+        message: `La auditoría ha sido enviada con éxito a ${recipientEmail}.`
+      });
+    } catch (err: any) {
+      console.error("Error sending email", err);
+      setEmailStatus({
+        type: "error",
+        message: err.message || "Ocurrió un error al enviar el correo. Por favor, inténtelo de nuevo."
+      });
+    } finally {
+      setIsEmailSending(false);
+    }
+  };
+
+  const handleGmailLogout = async () => {
+    await logout();
+    setGmailUser(null);
+    setGmailToken(null);
+  };
+
   const toggleVerifiedZero = (label: string) => {
     setVerifiedZeros(prev => ({
       ...prev,
@@ -1310,13 +1400,23 @@ export default function App() {
                 <p className="text-xs text-slate-400 mt-2">PDF de diseño profesional con escenarios macroeconómicos, orden sucesorio y diagnóstico formal del asesor.</p>
               </div>
 
-              {/* Keep existing button exact text for backward compatible handlers if any */}
-              <button 
-                id="download-professional-pdf"
-                className="w-full flex items-center justify-center gap-2 rounded bg-[#C5A566] py-3.5 text-xs font-black uppercase text-white tracking-wider hover:bg-[#A8833F] transition-colors shadow-md"
-              >
-                <Download className="h-4 w-4" /> Descargar informe PDF
-              </button>
+              <div className="flex flex-col sm:flex-row lg:flex-col gap-3">
+                {/* Keep existing button exact text for backward compatible handlers if any */}
+                <button 
+                  id="download-professional-pdf"
+                  className="flex-1 flex items-center justify-center gap-2 rounded bg-[#C5A566] py-3.5 text-xs font-black uppercase text-white tracking-wider hover:bg-[#A8833F] transition-colors shadow-md"
+                >
+                  <Download className="h-4 w-4" /> Descargar informe PDF
+                </button>
+                <button 
+                  type="button"
+                  id="send-professional-email"
+                  onClick={handleSendEmailClick}
+                  className="flex-1 flex items-center justify-center gap-2 rounded border border-[#C5A566] py-3.5 text-xs font-black uppercase text-[#C5A566] hover:bg-[#C5A566] hover:text-white transition-colors tracking-wider shadow-md"
+                >
+                  <Mail className="h-4 w-4" /> Enviar por email
+                </button>
+              </div>
             </div>
 
           </div>
@@ -1487,9 +1587,9 @@ export default function App() {
             ))}
           </div>
 
-          <div className="bg-amber-50 border border-amber-200 text-slate-800 text-xs rounded-lg p-4 space-y-2">
-            <p className="font-bold text-amber-950 flex items-center gap-1.5">
-              <Info className="h-4 w-4 text-[#C5A566]" /> ¿Por qué se eleva el Gasto de Referencia en Jubilación?
+          <div className="bg-amber-50 border border-amber-200 text-white text-xs rounded-lg p-4 space-y-2">
+            <p className="font-bold text-white flex items-center gap-1.5">
+              <Info className="h-4 w-4 text-white" /> ¿Por qué se eleva el Gasto de Referencia en Jubilación?
             </p>
             <p className="leading-relaxed">
               En planificación patrimonial profesional, presupuestar la jubilación basándose únicamente en el gasto actual de supervivencia básica (por ejemplo, 1.600 €) es un error crítico. El <strong>gasto de referencia</strong> se calcula aplicando una <strong>tasa de reemplazo idónea del 85% de tus ingresos netos ordinarios actuales</strong> (o tus gastos fijos netos de deudas que ya se habrán amortizado antes de jubilarte, lo que sea mayor).
@@ -1583,6 +1683,136 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* GMAIL SEND MODAL */}
+      {isEmailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-lg bg-[#1A1A1A] border border-[#C5A566]/30 text-white rounded-2xl shadow-2xl p-6 relative overflow-hidden"
+          >
+            {/* Background elements */}
+            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-36 h-36 bg-[#C5A566]/10 rounded-full blur-2xl pointer-events-none" />
+            
+            <button 
+              onClick={() => setIsEmailModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center gap-2 mb-4">
+              <Mail className="h-5 w-5 text-[#C5A566]" />
+              <h3 className="text-md font-black uppercase tracking-wider text-white">Enviar Auditoría por Email</h3>
+            </div>
+
+            {!gmailUser ? (
+              <div className="text-center py-6 space-y-4">
+                <p className="text-xs text-slate-300 leading-relaxed max-w-sm mx-auto">
+                  Para enviar de forma segura la auditoría en formato PDF a tu cliente a través de tu cuenta corporativa, conecta tu Gmail.
+                </p>
+                <div className="flex justify-center">
+                  <button 
+                    type="button"
+                    onClick={handleGmailLogin}
+                    className="gsi-material-button text-xs font-semibold"
+                  >
+                    <div className="gsi-material-button-state"></div>
+                    <div className="gsi-material-button-content-wrapper flex items-center justify-center">
+                      <div className="gsi-material-button-icon">
+                        <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" style={{ display: "block" }}>
+                          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                          <path fill="none" d="M0 0h48v48H0z"></path>
+                        </svg>
+                      </div>
+                      <span className="gsi-material-button-contents">Sign in with Google</span>
+                    </div>
+                  </button>
+                </div>
+                {emailStatus?.type === "error" && (
+                  <p className="text-xs text-red-400 mt-2">{emailStatus.message}</p>
+                )}
+              </div>
+            ) : (
+              <form onSubmit={handleSendEmailSubmit} className="space-y-4">
+                <div className="flex items-center justify-between text-xs text-slate-400 border-b border-white/10 pb-2">
+                  <span>Conectado como: <strong className="text-white">{gmailUser.email}</strong></span>
+                  <button type="button" onClick={handleGmailLogout} className="text-[#C5A566] hover:underline">Cerrar sesión</button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs text-slate-300 font-bold block">Para:</label>
+                  <input 
+                    type="email" 
+                    required
+                    value={recipientEmail}
+                    onChange={e => setRecipientEmail(e.target.value)}
+                    placeholder="email@cliente.com"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#C5A566]"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs text-slate-300 font-bold block">Asunto:</label>
+                  <input 
+                    type="text" 
+                    disabled
+                    value="Auditoría de riesgos financieros y patrimoniales"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-400 cursor-not-allowed"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs text-slate-300 font-bold block">Mensaje (con PDF adjunto):</label>
+                  <textarea 
+                    disabled
+                    rows={4}
+                    value={`A continuación te adjunto tu auditoría. Quedo a tu disposición para cualquier duda o solventar los riesgos detectados.\n\nUn cordial saludo.`}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-slate-400 cursor-not-allowed resize-none leading-relaxed"
+                  />
+                </div>
+
+                {emailStatus && (
+                  <div className={`p-3 rounded-lg text-xs leading-relaxed ${
+                    emailStatus.type === "success" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border border-red-500/20 text-red-400"
+                  }`}>
+                    {emailStatus.message}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsEmailModalOpen(false)}
+                    className="flex-1 bg-white/5 hover:bg-white/10 text-xs font-black uppercase tracking-wider text-slate-300 py-3 rounded-lg transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isEmailSending}
+                    className="flex-1 bg-[#C5A566] hover:bg-[#A8833F] text-xs font-black uppercase tracking-wider text-white py-3 rounded-lg transition flex items-center justify-center gap-1.5"
+                  >
+                    {isEmailSending ? (
+                      <>
+                        <span className="animate-pulse">Enviando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="h-4 w-4" /> Enviar por Gmail
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </motion.div>
+        </div>
+      )}
     </div>
     </VerificationContext.Provider>
   );
